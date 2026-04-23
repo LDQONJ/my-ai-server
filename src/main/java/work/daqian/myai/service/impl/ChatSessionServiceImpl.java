@@ -125,7 +125,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         int count = 0;
         try {
             while (context.isEmpty() && count < 100) {
-                count ++;
+                count++;
                 Thread.sleep(100);
                 context = contextService.getHistory(id, true);
             }
@@ -133,17 +133,29 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
             throw new RuntimeException(e);
         }
         if (context.isEmpty()) throw new BadRequestException("对话记录为空，无法生成标题");
-        context.add(new Message(
-                "user",
+        List<Message> titlePrompt = new ArrayList<>(8);
+        titlePrompt.add(new Message(
+                "system",
                 """
-                        给以上对话生成一个标题，要求：
-                        1. 10个字以内
-                        2. 只需回复标题
+                        为以下对话生成一个标题，要求：
+                        1. 只能输出标题本身
+                        2. 不要添加任何解释或前缀
+                        3. 不要出现“好的”、“标题是”等内容
+                        4. 标题不超过10个字
                         """
         ));
+        titlePrompt.addAll(context);
+        titlePrompt.add(new Message(
+                "user",
+                """
+                        为以上对话生成标题，只需回复标题内容
+                        """
+        ));
+        String currentModel = modelService.getCurrentModel().get();
         ChatRequest request = new ChatRequest(
-                modelService.getCurrentModel().get(),
-                context,
+                // deepseek-r1 无法关闭思考模式，导致生成标题的过程属于思考内容，往往不会服从指令，需要使用其他轻量模型生成标题
+                currentModel.startsWith("deepseek-r1") ? "qwen3.5:4b" : currentModel,
+                titlePrompt,
                 true,
                 false
         );
