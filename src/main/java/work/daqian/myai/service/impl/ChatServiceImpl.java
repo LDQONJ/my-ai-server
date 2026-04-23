@@ -78,7 +78,6 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
 
         List<Message> history = contextService.getHistory(sessionId, false);
         Message userMessage = new Message("user", text);
-        history.add(userMessage);
 
         PromptContext promptContext;
         if (enablePrompt) {
@@ -128,6 +127,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
                                     thin = thinkingBuilder.toString();
                                 }
                                 if (!cont.isEmpty() || !thin.isEmpty()) {
+                                    history.add(userMessage);
                                     history.add(new Message("assistant", cont));
                                     CompletableFuture.runAsync(() -> {
                                         try {
