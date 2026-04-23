@@ -18,7 +18,10 @@ import work.daqian.myai.domain.po.ChatSession;
 import work.daqian.myai.domain.vo.ChatMessageVO;
 import work.daqian.myai.domain.vo.ChatSessionVO;
 import work.daqian.myai.exception.BadRequestException;
+import work.daqian.myai.exception.BizIllegalException;
 import work.daqian.myai.mapper.ChatSessionMapper;
+import work.daqian.myai.prompt.PromptBuilder;
+import work.daqian.myai.prompt.PromptContext;
 import work.daqian.myai.repository.ChatMessageRepository;
 import work.daqian.myai.service.ChatMessageService;
 import work.daqian.myai.service.ContextService;
@@ -59,6 +62,8 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     private final IModelService modelService;
 
     private final ObjectMapper mapper;
+
+    private final PromptBuilder promptBuilder;
 
     @Autowired
     @Qualifier("taskExecutor")
@@ -121,41 +126,35 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
 
     @Override
     public Flux<String> generateTitle(String id) {
-        List<Message> context = new ArrayList<>();
+        List<Message> history = new ArrayList<>();
         int count = 0;
         try {
-            while (context.isEmpty() && count < 100) {
+            while (history.isEmpty() && count < 100) {
                 count++;
                 Thread.sleep(100);
-                context = contextService.getHistory(id, true);
+                history = contextService.getHistory(id, true);
             }
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            throw new BizIllegalException("生成标题失败");
         }
-        if (context.isEmpty()) throw new BadRequestException("对话记录为空，无法生成标题");
-        List<Message> titlePrompt = new ArrayList<>(8);
-        titlePrompt.add(new Message(
-                "system",
-                """
+        if (history.isEmpty()) throw new BadRequestException("对话记录为空，无法生成标题");
+        PromptContext promptContext = PromptContext.builder()
+                .rules("""
                         为以下对话生成一个标题，要求：
                         1. 只能输出标题本身
                         2. 不要添加任何解释或前缀
                         3. 不要出现“好的”、“标题是”等内容
                         4. 标题不超过10个字
-                        """
-        ));
-        titlePrompt.addAll(context);
-        titlePrompt.add(new Message(
-                "user",
-                """
-                        为以上对话生成标题，只需回复标题内容
-                        """
-        ));
+                        """)
+                .history(history)
+                .userInput(new Message("user", "为以上对话生成标题，只需回复标题内容"))
+                .build();
+        List<Message> prompt = promptBuilder.build(promptContext);
         String currentModel = modelService.getCurrentModel().get();
         ChatRequest request = new ChatRequest(
                 // deepseek-r1 无法关闭思考模式，导致生成标题的过程属于思考内容，往往不会服从指令，需要使用其他轻量模型生成标题
                 currentModel.startsWith("deepseek-r1") ? "qwen3.5:4b" : currentModel,
-                titlePrompt,
+                prompt,
                 true,
                 false
         );
@@ -166,7 +165,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                 .bodyValue(request)
                 .retrieve()
                 .bodyToFlux(String.class)
-                .flatMap(chunk -> parseChunk(chunk, contentBuilder, null))
+                .flatMap(chunk -> parseChunk(chunk, contentBuilder))
                 // .delayElements(java.time.Duration.ofMillis(100)) 让前端延迟，不然数据容易乱序到达前端
                 .filter(content -> content != null && !content.isEmpty())
                 .concatWith(Flux.defer(() -> {
@@ -180,34 +179,19 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     }
 
     // 解析 Ollama chunk
-    public Flux<String> parseChunk(String chunk, StringBuilder contentBuilder, StringBuilder thinkingBuilder) {
+    public Flux<String> parseChunk(String chunk, StringBuilder contentBuilder) {
         try {
             String[] lines = chunk.split("\n");
             List<String> result = new ArrayList<>();
-
-            // 锁定 contentBuilder 确保 append 过程不被 doFinally 的 toString 打断
-            synchronized (contentBuilder) {
-                for (String line : lines) {
-                    line = line.trim();
-                    if (line.isEmpty()) continue;
-
-                    JsonNode node = mapper.readTree(line);
-                    JsonNode message = node.path("message");
-
-                    // 1. 解析思考内容
-                    String thinking = message.path("thinking").asText();
-                    if (thinking != null && !thinking.isEmpty()) {
-                        thinking.codePoints().forEach(cp -> result.add(toJson("thinking", new String(Character.toChars(cp)))));
-                        if (thinkingBuilder != null)
-                            thinkingBuilder.append(thinking);
-                    }
-
-                    // 2. 解析正常内容
-                    String content = message.path("content").asText();
-                    if (content != null && !content.isEmpty()) {
-                        content.codePoints().forEach(cp -> result.add(toJson("content", new String(Character.toChars(cp)))));
-                        contentBuilder.append(content);
-                    }
+            for (String line : lines) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+                JsonNode node = mapper.readTree(line);
+                JsonNode message = node.path("message");
+                String content = message.path("content").asText();
+                if (content != null && !content.isEmpty()) {
+                    content.codePoints().forEach(cp -> result.add(toJson(new String(Character.toChars(cp)))));
+                    contentBuilder.append(content);
                 }
             }
             return Flux.fromIterable(result);
@@ -216,14 +200,9 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         }
     }
 
-    private String toJson(String type, String text) {
+    private String toJson(String text) {
         try {
-            return mapper.writeValueAsString(
-                    Map.of(
-                            "type", type,
-                            "content", text
-                    )
-            );
+            return mapper.writeValueAsString(Map.of("type", "content", "content", text));
         } catch (Exception e) {
             return "";
         }
