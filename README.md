@@ -124,16 +124,3 @@ curl -N -X POST "https://localhost:5000/chat" \
 mvn clean test
 mvn clean package
 ```
-
-产物默认位于 `target/` 目录。
-
-## 发布到 GitHub 前建议
-
-- 确认未提交任何真实密钥（数据库、邮件、JWT、证书密码等）
-- 确认 `application-secret.yaml` 等私密配置不进入版本库
-- 建议补充 `LICENSE`
-- 建议补充 CI（例如 GitHub Actions）进行自动构建与测试
-
-## License
-
-暂未声明。建议根据你的开源计划补充，例如 MIT / Apache-2.0。
