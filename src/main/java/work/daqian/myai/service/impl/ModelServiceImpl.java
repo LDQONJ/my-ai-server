@@ -2,6 +2,7 @@ package work.daqian.myai.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.Getter;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import work.daqian.myai.common.R;
@@ -25,12 +26,12 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 @Getter
 @Service
-public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements IModelService {
+public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements IModelService, InitializingBean {
 
     @Value("${ldq.ai.default-model}")
     private String defaultModel;
 
-    private final AtomicReference<String> currentModel = new AtomicReference<>(defaultModel);
+    private AtomicReference<String> currentModel;
 
     @Override
     public R<List<ModelVO>> listAllModel() {
@@ -55,5 +56,10 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
         Model model = lambdaQuery().eq(Model::getFullName, current).one();
         ModelVO modelVO = BeanUtils.copyBean(model, ModelVO.class);
         return R.ok(modelVO);
+    }
+
+    @Override
+    public void afterPropertiesSet() {
+        this.currentModel = new AtomicReference<>(defaultModel);
     }
 }
