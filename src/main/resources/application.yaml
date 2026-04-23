@@ -1,0 +1,88 @@
+server:
+  port: 5000
+  ssl:
+    enabled: true
+    key-store: classpath:keystore.p12
+    key-store-password: ${SSL_KEY_STORE_PASSWORD}
+    key-store-type: PKCS12
+    key-alias: ai.daqian.work
+spring:
+  profiles:
+    include: secret
+  application:
+    name: myai
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      password: ${REDIS_PASSWORD}
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 1
+          max-wait: 300
+    mongodb:
+      uri: ${MONGODB_URI}
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+mybatis-plus:
+  configuration:
+    default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler
+  global-config:
+    field-strategy: 0
+    db-config:
+      logic-delete-field: deleted
+      id-type: assign_id
+
+logging:
+  pattern:
+    dateformat: HH:mm:ss.SSS
+    console: "%clr(%d{${LOG_DATEFORMAT_PATTERN}}){faint}-[${hostname}][%X{requestId:-sys}] %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n"
+    file: "%d{${LOG_DATEFORMAT_PATTERN}}-[${hostname}][%X{requestId:-sys}]-${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%15.15t] %-40.40logger{39} : %m%n"
+  file:
+    path: "logs/${spring.application.name}"
+
+ldq:
+  swagger:
+    enable: true
+    package-path: work.daqian.myai.controller
+    title: AI 聊天 - 接口文档
+    description: ai聊天相关接口文档
+    contact-name: LDQ
+    version: v1.0
+  ai:
+    default-model: ${AI_MODEL}
+  jwt:
+    secret: ${JWT_SECRET}
+
+knife4j:
+  enable: true
+
+auth:
+  resource:
+    enable: true
+    include-login-paths:
+      - "/**"  # 拦截所有路径，根据实际需要调整
+    exclude-login-paths:
+      - "/verifyCode/**"  # 排除验证码相关路径
+      - "/users/register"  # 排除注册路径
+      - "/users/login"     # 排除登录路径
+      - "/files/**"
+
