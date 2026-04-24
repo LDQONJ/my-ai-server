@@ -112,11 +112,11 @@ public class ContextServiceImpl implements ContextService {
 
     @Override
     public void clear(String sessionId) {
+        promptRepository.deleteAllBySessionId(sessionId);
         redisTemplate.delete(PERSONA_PREFIX + sessionId);
         redisTemplate.delete(RULES_PREFIX + sessionId);
         redisTemplate.delete(SUMMARY_PREFIX + sessionId);
         redisTemplate.delete(HISTORY_PREFIX + sessionId);
-        promptRepository.deleteAllBySessionId(sessionId);
     }
 
     /**
