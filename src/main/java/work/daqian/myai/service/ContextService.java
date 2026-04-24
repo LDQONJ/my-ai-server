@@ -20,7 +20,7 @@ public interface ContextService {
 
     void clear(String sessionId);
 
-    void zipContext(String sessionId);
+    void zipHistory(String sessionId);
 
     R<PromptDTO> queryGlobalSystemPrompt();
 

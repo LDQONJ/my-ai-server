@@ -50,6 +50,10 @@ public class ContextServiceImpl implements ContextService {
 
     private static final String RULES_PREFIX = "context:rules:sid:";
 
+    private static final String GLOBAL_PERSONA_PREFIX = "context:persona:global:";
+
+    private static final String GLOBAL_RULES_PREFIX = "context:rules:global:";
+
     private static final int MAX_CONTEXT = 20;
 
     private final ChatMessageService messageService;
@@ -66,7 +70,7 @@ public class ContextServiceImpl implements ContextService {
         String json = redisTemplate.opsForValue().get(key);
         if (json == null) {
             if (onlyCache) return new ArrayList<>();
-            List<ChatMessageVO> vos = messageService.listMessagePage(sessionId, MAX_CONTEXT); //
+            List<ChatMessageVO> vos = messageService.listMessagePage(sessionId, MAX_CONTEXT);
             List<Message> messages = BeanUtils.copyList(vos, Message.class);
             if (!messages.isEmpty() && messages.get(messages.size() - 1).getRole().equals("user"))
                 messages = messages.subList(0, messages.size() - 1);
@@ -76,6 +80,7 @@ public class ContextServiceImpl implements ContextService {
                 return new ArrayList<>();
             }
             redisTemplate.opsForValue().set(key, json);
+            redisTemplate.expire(key, Duration.ofHours(1));
             return new ArrayList<>(messages);
         }
         try {
@@ -93,7 +98,7 @@ public class ContextServiceImpl implements ContextService {
     public void saveHistory(String sessionId, List<Message> messages) {
         int size = messages.size();
         if (size > MAX_CONTEXT) {
-            zipContext(sessionId);
+            zipHistory(sessionId);
             return;
         }
         String key = HISTORY_PREFIX + sessionId;
@@ -119,7 +124,7 @@ public class ContextServiceImpl implements ContextService {
      * @param sessionId 对话id
      */
     @Override
-    public void zipContext(String sessionId) {
+    public void zipHistory(String sessionId) {
         String key = HISTORY_PREFIX + sessionId;
         List<Message> history = getHistory(sessionId, false);
         history.add(new Message(
@@ -208,10 +213,17 @@ public class ContextServiceImpl implements ContextService {
                 sessionId,
                 (sid) -> {
                     SystemPrompt prompt = promptRepository.findSystemPromptBySessionIdAndType(sid, "persona");
-                    if (prompt == null)
+                    if (prompt == null) {
+                        String promptContent = redisTemplate.opsForValue().get(GLOBAL_PERSONA_PREFIX + userId);
+                        if (promptContent != null) {
+                            prompt = new SystemPrompt();
+                            prompt.setType("global_persona");
+                            prompt.setContent(promptContent);
+                            return prompt;
+                        }
                         prompt = promptRepository.findSystemPromptByUserIdAndType(userId, "global_persona");
-                    if (prompt == null) return null;
-                    return prompt.getContent();
+                    }
+                    return prompt;
                 }
         );
     }
@@ -225,10 +237,17 @@ public class ContextServiceImpl implements ContextService {
                 sessionId,
                 (sid) -> {
                     SystemPrompt prompt = promptRepository.findSystemPromptBySessionIdAndType(sid, "rules");
-                    if (prompt == null)
+                    if (prompt == null) {
+                        String promptContent = redisTemplate.opsForValue().get(GLOBAL_RULES_PREFIX + userId);
+                        if (promptContent != null) {
+                            prompt = new SystemPrompt();
+                            prompt.setType("global_rules");
+                            prompt.setContent(promptContent);
+                            return prompt;
+                        }
                         prompt = promptRepository.findSystemPromptByUserIdAndType(userId, "global_rules");
-                    if (prompt == null) return null;
-                    return prompt.getContent();
+                    }
+                    return prompt;
                 }
         );
     }
@@ -240,11 +259,7 @@ public class ContextServiceImpl implements ContextService {
         return getSystemPrompt(
                 SUMMARY_PREFIX,
                 sessionId,
-                (sid) -> {
-                    SystemPrompt prompt = promptRepository.findSystemPromptBySessionIdAndType(sid, "summary");
-                    if (prompt == null) return null;
-                    return prompt.getContent();
-                }
+                (sid) -> promptRepository.findSystemPromptBySessionIdAndType(sid, "summary")
         );
     }
 
@@ -274,27 +289,57 @@ public class ContextServiceImpl implements ContextService {
             }
             promptService.saveOrUpdate(rules);
         }
+        if (id instanceof Long) {
+            redisTemplate.delete(GLOBAL_PERSONA_PREFIX + id);
+            redisTemplate.delete(GLOBAL_RULES_PREFIX + id);
+        } else {
+            redisTemplate.delete(PERSONA_PREFIX + id);
+            redisTemplate.delete(RULES_PREFIX + id);
+        }
     }
 
     private <T> PromptDTO querySystemPrompt(T id, Function<T, SystemPrompt> queryPersona, Function<T, SystemPrompt> queryRules) {
-        SystemPrompt persona = queryPersona.apply(id);
-        SystemPrompt rules = queryRules.apply(id);
+        String personaContent;
+        String rulesContent;
+        if (id instanceof Long) {
+            personaContent = redisTemplate.opsForValue().get(GLOBAL_PERSONA_PREFIX + id);
+            rulesContent = redisTemplate.opsForValue().get(GLOBAL_RULES_PREFIX + id);
+        } else {
+            personaContent = redisTemplate.opsForValue().get(PERSONA_PREFIX + id);
+            rulesContent = redisTemplate.opsForValue().get(RULES_PREFIX + id);
+        }
+        if (personaContent == null) {
+            SystemPrompt persona = queryPersona.apply(id);
+            if (persona != null) personaContent = persona.getContent();
+        }
+        if (rulesContent == null) {
+            SystemPrompt rules = queryRules.apply(id);
+            if (rules != null) rulesContent = rules.getContent();
+        }
         PromptDTO promptDTO = new PromptDTO();
-        if (persona != null)
-            promptDTO.setPersona(persona.getContent());
-        if (rules != null)
-            promptDTO.setRules(rules.getContent());
+        promptDTO.setPersona(personaContent);
+        promptDTO.setRules(rulesContent);
         return promptDTO;
     }
 
-    private String getSystemPrompt(String keyPrefix, String sessionId, Function<String, String> getFromDb) {
-        String key = keyPrefix + sessionId;
-        String prompt = redisTemplate.opsForValue().get(key);
-        if (prompt == null) {
-            prompt = getFromDb.apply(sessionId);
-            if (prompt != null)
-                redisTemplate.opsForValue().set(key, prompt);
+    private String getSystemPrompt(String keyPrefix, String sessionId, Function<String, SystemPrompt> getFromDb) {
+        String sessionKey = keyPrefix + sessionId;
+        String promptContent = redisTemplate.opsForValue().get(sessionKey);
+        if (promptContent != null) return promptContent;
+        SystemPrompt prompt = getFromDb.apply(sessionId);
+        if (prompt == null) return null;
+        promptContent = prompt.getContent();
+        if (!prompt.getType().startsWith("global")) {
+            redisTemplate.opsForValue().set(sessionKey, promptContent);
+            redisTemplate.expire(sessionKey, Duration.ofHours(1));
+        } else {
+            Long userId = UserContext.getUser();
+            if (userId != null) {
+                String globalKey = keyPrefix.substring(0, keyPrefix.length() - 4) + "global:" + userId;
+                redisTemplate.opsForValue().set(globalKey, prompt.getContent());
+                redisTemplate.expire(globalKey, Duration.ofHours(1));
+            }
         }
-        return prompt;
+        return promptContent;
     }
 }
