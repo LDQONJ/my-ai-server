@@ -16,20 +16,20 @@ import work.daqian.myai.domain.po.SystemPrompt;
 import work.daqian.myai.domain.vo.ChatMessageVO;
 import work.daqian.myai.exception.BadRequestException;
 import work.daqian.myai.exception.BizIllegalException;
+import work.daqian.myai.prompt.PromptType;
 import work.daqian.myai.repository.SystemPromptRepository;
 import work.daqian.myai.service.ChatMessageService;
 import work.daqian.myai.service.ContextService;
 import work.daqian.myai.service.IModelService;
 import work.daqian.myai.service.SystemPromptService;
 import work.daqian.myai.util.BeanUtils;
+import work.daqian.myai.util.RedisUtil;
 import work.daqian.myai.util.UserContext;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 import static work.daqian.myai.service.impl.ChatServiceImpl.webClient;
 
@@ -42,18 +42,6 @@ public class ContextServiceImpl implements ContextService {
 
     private final ObjectMapper mapper;
 
-    private static final String HISTORY_PREFIX = "context:history:sid:";
-
-    private static final String SUMMARY_PREFIX = "context:summary:sid:";
-
-    private static final String PERSONA_PREFIX = "context:parsona:sid:";
-
-    private static final String RULES_PREFIX = "context:rules:sid:";
-
-    private static final String GLOBAL_PERSONA_PREFIX = "context:persona:global:";
-
-    private static final String GLOBAL_RULES_PREFIX = "context:rules:global:";
-
     private static final int MAX_CONTEXT = 20;
 
     private final ChatMessageService messageService;
@@ -64,25 +52,29 @@ public class ContextServiceImpl implements ContextService {
 
     private final IModelService modelService;
 
+    private final RedisUtil redisUtil;
+
     @Override
     public List<Message> getHistory(String sessionId, boolean onlyCache) {
-        String key = HISTORY_PREFIX + sessionId;
+        String key = PromptType.HISTORY.getKeyPrefix() + sessionId;
         String json = redisTemplate.opsForValue().get(key);
+        if (json != null && json.isEmpty()) return new ArrayList<>();
         if (json == null) {
             if (onlyCache) return new ArrayList<>();
-            List<ChatMessageVO> vos = messageService.listMessagePage(sessionId, MAX_CONTEXT);
-            List<Message> messages = BeanUtils.copyList(vos, Message.class);
-            if (!messages.isEmpty() && messages.get(messages.size() - 1).getRole().equals("user"))
-                messages = messages.subList(0, messages.size() - 1);
-            try {
-                json = mapper.writeValueAsString(messages);
-            } catch (JsonProcessingException e) {
-                return new ArrayList<>();
-            }
-            redisTemplate.opsForValue().set(key, json);
-            redisTemplate.expire(key, Duration.ofHours(1));
-            return new ArrayList<>(messages);
+            json = redisUtil.cacheEmptyIfNE(PromptType.HISTORY.getKeyPrefix(), sessionId, Duration.ofHours(1), (sid) -> {
+                String j;
+                List<ChatMessageVO> vos = messageService.listMessagePage(sessionId, MAX_CONTEXT);
+                if (vos == null || vos.isEmpty()) return "";
+                List<Message> messages = BeanUtils.copyList(vos, Message.class);
+                try {
+                    j = mapper.writeValueAsString(messages);
+                } catch (JsonProcessingException e) {
+                    return "";
+                }
+                return j;
+            });
         }
+        if (json.isEmpty()) return new ArrayList<>();
         try {
             Message[] messageArray = mapper.readValue(json, Message[].class);
             List<Message> messages = Arrays.asList(messageArray);
@@ -101,10 +93,9 @@ public class ContextServiceImpl implements ContextService {
             zipHistory(sessionId);
             return;
         }
-        String key = HISTORY_PREFIX + sessionId;
+        String key = PromptType.HISTORY.getKeyPrefix() + sessionId;
         try {
-            redisTemplate.opsForValue().set(key, mapper.writeValueAsString(messages));
-            redisTemplate.expire(key, Duration.ofHours(1));
+            redisTemplate.opsForValue().set(key, mapper.writeValueAsString(messages), Duration.ofHours(1));
         } catch (JsonProcessingException e) {
             log.error("保存消息到redis失败");
         }
@@ -113,10 +104,10 @@ public class ContextServiceImpl implements ContextService {
     @Override
     public void clear(String sessionId) {
         promptRepository.deleteAllBySessionId(sessionId);
-        redisTemplate.delete(PERSONA_PREFIX + sessionId);
-        redisTemplate.delete(RULES_PREFIX + sessionId);
-        redisTemplate.delete(SUMMARY_PREFIX + sessionId);
-        redisTemplate.delete(HISTORY_PREFIX + sessionId);
+        redisTemplate.delete(PromptType.PERSONA.getKeyPrefix() + sessionId);
+        redisTemplate.delete(PromptType.RULES.getKeyPrefix() + sessionId);
+        redisTemplate.delete(PromptType.SUMMARY.getKeyPrefix() + sessionId);
+        redisTemplate.delete(PromptType.HISTORY.getKeyPrefix() + sessionId);
     }
 
     /**
@@ -125,46 +116,31 @@ public class ContextServiceImpl implements ContextService {
      */
     @Override
     public void zipHistory(String sessionId) {
-        String key = HISTORY_PREFIX + sessionId;
+        String key = PromptType.HISTORY.getKeyPrefix() + sessionId;
         List<Message> history = getHistory(sessionId, false);
-        history.add(new Message(
-                "user",
-                """
-                        总结之前的对话，生成一段摘要，要求：
-                        1. 保留关键信息。
-                        2. 不超过300字。
-                        摘要格式：
-                        - 用户的目标
-                        - 已经讨论过的内容
-                        - 当前谈论到的内容。
-                        
-                        只需回复摘要内容。
-                        """
-        ));
-        ChatRequest request = new ChatRequest(
-                modelService.getCurrentModel().get(),
-                history,
-                false,
-                false
-        );
+        history.add(new Message("user", """
+                总结之前的对话，生成一段摘要，要求：
+                1. 保留关键信息。
+                2. 不超过300字。
+                摘要格式：
+                - 用户的目标
+                - 已经讨论过的内容
+                - 当前谈论到的内容。
+                
+                只需回复摘要内容。
+                """));
+        ChatRequest request = new ChatRequest(modelService.getCurrentModel().get(), history, false, false);
         try {
-            ChatResponse response = webClient.post()
-                    .uri("/api/chat")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(request)
-                    .retrieve()
-                    .bodyToMono(ChatResponse.class)
-                    .block();
+            ChatResponse response = webClient.post().uri("/api/chat").contentType(MediaType.APPLICATION_JSON).bodyValue(request).retrieve().bodyToMono(ChatResponse.class).block();
             Message message = response.getMessage();
             SystemPrompt systemPrompt = new SystemPrompt();
             systemPrompt.setSessionId(sessionId);
-            systemPrompt.setType("summary");
+            systemPrompt.setType(PromptType.SUMMARY);
             systemPrompt.setContent(message.getContent());
             promptService.saveOrUpdate(systemPrompt);
             // 裁剪redis中的历史记录
             history.subList(MAX_CONTEXT / 2, history.size() - 1);
-            redisTemplate.opsForValue().set(key, mapper.writeValueAsString(history));
-            redisTemplate.expire(key, Duration.ofHours(1));
+            redisTemplate.opsForValue().set(key, mapper.writeValueAsString(history), Duration.ofHours(1));
         } catch (Exception e) {
             throw new BizIllegalException("压缩上下文失败");
         }
@@ -174,172 +150,112 @@ public class ContextServiceImpl implements ContextService {
     public R<PromptDTO> queryGlobalSystemPrompt() {
         Long userId = UserContext.getUser();
         if (userId == null) throw new BadRequestException("未登录用户无法使用此功能");
-        return R.ok(querySystemPrompt(
-                userId,
-                (uid) -> promptRepository.findSystemPromptByUserIdAndType(uid, "global_persona"),
-                (uid) -> promptRepository.findSystemPromptByUserIdAndType(uid, "global_rules")
-        ));
+        return R.ok(querySystemPrompt(userId));
     }
 
     @Override
     public R<PromptDTO> querySessionSystemPrompt(String id) {
-        return R.ok(querySystemPrompt(
-                id,
-                (sessionId) -> promptRepository.findSystemPromptBySessionIdAndType(sessionId, "persona"),
-                (sessionId) -> promptRepository.findSystemPromptBySessionIdAndType(sessionId, "rules")
-        ));
+        return R.ok(querySystemPrompt(id));
     }
 
     @Override
     public R<Void> updateGlobalSystemPrompt(PromptDTO prompt) {
         Long userId = UserContext.getUser();
         if (userId == null) throw new BadRequestException("未登录用户无法使用此功能");
-        updateSystemPrompt(userId, prompt, SystemPrompt::setUserId);
+        updatePrompt(userId, prompt);
         return R.ok();
     }
 
     @Override
     public R<Void> updateSessionSystemPrompt(String id, PromptDTO prompt) {
-        updateSystemPrompt(id, prompt, SystemPrompt::setSessionId);
+        updatePrompt(id, prompt);
         return R.ok();
     }
 
     @Override
     public String getPersona(String sessionId) {
-        Long userId = UserContext.getUser();
-        if (userId == null) return null;
-        return getSystemPrompt(
-                PERSONA_PREFIX,
-                sessionId,
-                (sid) -> {
-                    SystemPrompt prompt = promptRepository.findSystemPromptBySessionIdAndType(sid, "persona");
-                    if (prompt == null) {
-                        String promptContent = redisTemplate.opsForValue().get(GLOBAL_PERSONA_PREFIX + userId);
-                        if (promptContent != null) {
-                            prompt = new SystemPrompt();
-                            prompt.setType("global_persona");
-                            prompt.setContent(promptContent);
-                            return prompt;
-                        }
-                        prompt = promptRepository.findSystemPromptByUserIdAndType(userId, "global_persona");
-                    }
-                    return prompt;
-                }
-        );
+        return getSystemPrompt(PromptType.PERSONA, sessionId);
     }
 
     @Override
     public String getRules(String sessionId) {
-        Long userId = UserContext.getUser();
-        if (userId == null) return null;
-        return getSystemPrompt(
-                RULES_PREFIX,
-                sessionId,
-                (sid) -> {
-                    SystemPrompt prompt = promptRepository.findSystemPromptBySessionIdAndType(sid, "rules");
-                    if (prompt == null) {
-                        String promptContent = redisTemplate.opsForValue().get(GLOBAL_RULES_PREFIX + userId);
-                        if (promptContent != null) {
-                            prompt = new SystemPrompt();
-                            prompt.setType("global_rules");
-                            prompt.setContent(promptContent);
-                            return prompt;
-                        }
-                        prompt = promptRepository.findSystemPromptByUserIdAndType(userId, "global_rules");
-                    }
-                    return prompt;
-                }
-        );
+        return getSystemPrompt(PromptType.RULES, sessionId);
     }
 
     @Override
     public String getSummary(String sessionId) {
-        Long userId = UserContext.getUser();
-        if (userId == null) return null;
-        return getSystemPrompt(
-                SUMMARY_PREFIX,
-                sessionId,
-                (sid) -> promptRepository.findSystemPromptBySessionIdAndType(sid, "summary")
-        );
+        return getSystemPrompt(PromptType.SUMMARY, sessionId);
     }
 
-    private <T> void updateSystemPrompt(T id, PromptDTO prompt, BiConsumer<SystemPrompt, T> setId) {
-        String personaContent = prompt.getPersona();
-        String rulesContent = prompt.getRules();
+    private <T> void updatePrompt(T id, PromptDTO prompt) {
+        doUpdatePrompt(id, prompt.getPersona(), PromptType.PERSONA);
+        doUpdatePrompt(id, prompt.getRules(), PromptType.RULES);
+    }
 
-        if (personaContent != null && !personaContent.isEmpty()) {
-            SystemPrompt persona = new SystemPrompt();
-            setId.accept(persona, id);
-            persona.setContent(personaContent);
+    private <T> void doUpdatePrompt(T id, String promptContent, PromptType type) {
+        if (promptContent != null && !promptContent.isEmpty()) {
+            SystemPrompt prompt = new SystemPrompt();
+            prompt.setContent(promptContent);
+            PromptType globalType = PromptType.fromValue(type.getValue() - 2);
             if (id instanceof Long) {
-                persona.setType("global_persona");
-            } else {
-                persona.setType("persona");
+                prompt.setUserId((Long) id);
+                prompt.setType(globalType);
+            } else if (id instanceof String) {
+                prompt.setSessionId((String) id);
+                prompt.setType(type);
             }
-            promptService.saveOrUpdate(persona);
-        }
-        if (rulesContent != null && !rulesContent.isEmpty()) {
-            SystemPrompt rules = new SystemPrompt();
-            setId.accept(rules, id);
-            rules.setContent(rulesContent);
+            promptService.saveOrUpdate(prompt);
             if (id instanceof Long) {
-                rules.setType("global_rules");
+                redisTemplate.opsForValue().set(globalType.getKeyPrefix() + id, promptContent, Duration.ofHours(1));
             } else {
-                rules.setType("rules");
+                redisTemplate.opsForValue().set(type.getKeyPrefix() + id, promptContent, Duration.ofHours(1));
             }
-            promptService.saveOrUpdate(rules);
-        }
-        if (id instanceof Long) {
-            redisTemplate.delete(GLOBAL_PERSONA_PREFIX + id);
-            redisTemplate.delete(GLOBAL_RULES_PREFIX + id);
-        } else {
-            redisTemplate.delete(PERSONA_PREFIX + id);
-            redisTemplate.delete(RULES_PREFIX + id);
         }
     }
 
-    private <T> PromptDTO querySystemPrompt(T id, Function<T, SystemPrompt> queryPersona, Function<T, SystemPrompt> queryRules) {
-        String personaContent;
-        String rulesContent;
+    private <T> PromptDTO querySystemPrompt(T id) {
+        String personaContent = null;
+        String rulesContent = null;
+
         if (id instanceof Long) {
-            personaContent = redisTemplate.opsForValue().get(GLOBAL_PERSONA_PREFIX + id);
-            rulesContent = redisTemplate.opsForValue().get(GLOBAL_RULES_PREFIX + id);
-        } else {
-            personaContent = redisTemplate.opsForValue().get(PERSONA_PREFIX + id);
-            rulesContent = redisTemplate.opsForValue().get(RULES_PREFIX + id);
+            personaContent = redisUtil.cacheEmptyIfNE(PromptType.GLOBAL_PERSONA.getKeyPrefix(), (Long) id, Duration.ofHours(1), (uid) -> {
+                SystemPrompt globalPersona = promptRepository.findSystemPromptByUserIdAndType(uid, PromptType.GLOBAL_PERSONA);
+                return globalPersona != null ? globalPersona.getContent() : "";
+            });
+            rulesContent = redisUtil.cacheEmptyIfNE(PromptType.GLOBAL_RULES.getKeyPrefix(), (Long) id, Duration.ofHours(1), (uid) -> {
+                SystemPrompt globalRules = promptRepository.findSystemPromptByUserIdAndType(uid, PromptType.GLOBAL_RULES);
+                return globalRules != null ? globalRules.getContent() : "";
+            });
+        } else if (id instanceof String) {
+            personaContent = redisUtil.cacheEmptyIfNE(PromptType.PERSONA.getKeyPrefix(), (String) id, Duration.ofHours(1), (sid) -> {
+                SystemPrompt persona = promptRepository.findSystemPromptBySessionIdAndType(sid, PromptType.PERSONA);
+                return persona != null ? persona.getContent() : "";
+            });
+            rulesContent = redisUtil.cacheEmptyIfNE(PromptType.RULES.getKeyPrefix(), (String) id, Duration.ofHours(1), (sid) -> {
+                SystemPrompt rules = promptRepository.findSystemPromptBySessionIdAndType(sid, PromptType.RULES);
+                return rules != null ? rules.getContent() : "";
+            });
         }
-        if (personaContent == null) {
-            SystemPrompt persona = queryPersona.apply(id);
-            if (persona != null) personaContent = persona.getContent();
-        }
-        if (rulesContent == null) {
-            SystemPrompt rules = queryRules.apply(id);
-            if (rules != null) rulesContent = rules.getContent();
-        }
+
         PromptDTO promptDTO = new PromptDTO();
         promptDTO.setPersona(personaContent);
         promptDTO.setRules(rulesContent);
         return promptDTO;
     }
 
-    private String getSystemPrompt(String keyPrefix, String sessionId, Function<String, SystemPrompt> getFromDb) {
-        String sessionKey = keyPrefix + sessionId;
-        String promptContent = redisTemplate.opsForValue().get(sessionKey);
-        if (promptContent != null) return promptContent;
-        SystemPrompt prompt = getFromDb.apply(sessionId);
-        if (prompt == null) return null;
-        promptContent = prompt.getContent();
-        if (!prompt.getType().startsWith("global")) {
-            redisTemplate.opsForValue().set(sessionKey, promptContent);
-            redisTemplate.expire(sessionKey, Duration.ofHours(1));
-        } else {
-            Long userId = UserContext.getUser();
-            if (userId != null) {
-                String globalKey = keyPrefix.substring(0, keyPrefix.length() - 4) + "global:" + userId;
-                redisTemplate.opsForValue().set(globalKey, prompt.getContent());
-                redisTemplate.expire(globalKey, Duration.ofHours(1));
-            }
-        }
+    private String getSystemPrompt(PromptType promptType, String sessionId) {
+        String promptContent = redisUtil.cacheEmptyIfNE(promptType.getKeyPrefix(), sessionId, Duration.ofHours(1), (sid) -> {
+            SystemPrompt prompt = promptRepository.findSystemPromptBySessionIdAndType(sid, promptType);
+            return prompt != null ? prompt.getContent() : "";
+        });
+        if (!promptContent.isEmpty() || promptType.equals(PromptType.SUMMARY)) return promptContent;
+        Long userId = UserContext.getUser();
+        if (userId == null) return "";
+        PromptType globalType = PromptType.fromValue(promptType.getValue() - 2);
+        promptContent = redisUtil.cacheEmptyIfNE(globalType.getKeyPrefix(), userId, Duration.ofHours(1), (uid) -> {
+            SystemPrompt prompt = promptRepository.findSystemPromptByUserIdAndType(uid, globalType);
+            return prompt != null ? prompt.getContent() : "";
+        });
         return promptContent;
     }
 }
