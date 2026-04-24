@@ -53,11 +53,6 @@ src/main/java/work/daqian/myai
 
 1. 克隆项目
 
-```bash
-git clone <your-repo-url>
-cd myai
-```
-
 2. 配置密钥与连接信息  
 配置 `src/main/resources/application-secret.yaml` 。
 
@@ -95,12 +90,5 @@ cd myai
 curl -N -X POST "https://localhost:5000/chat" \
   -H "Content-Type: application/json" \
   -H "Authorization: <your_access_token>" \
-  -d "{\"sessionId\":\"<session_id>\",\"message\":\"你好\"}"
-```
-
-## 打包与测试
-
-```bash
-mvn clean test
-mvn clean package
+  -d "{\"type\":\"thinking\",\"content\":\"嗯，用户发来了你好...\"}"
 ```
