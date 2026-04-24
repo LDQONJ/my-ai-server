@@ -1,17 +1,17 @@
-# myai
+# myai - AI 聊天应用后端服务器
 
-一个基于 Spring Boot 3 + Spring AI + Ollama 的 AI 聊天后端服务，支持用户体系、会话管理、提示词管理、模型切换、SSE 流式输出和文件上传下载。
+一个基于 Spring Boot 3 + Spring AI + Ollama 的 AI 聊天后端服务，支持用户管理、对话管理、提示词管理、模型切换、SSE 流式输出等功能。
+
+前端项目：[my-ai-chat](https://github.com/LDQONJ/my-ai-chat)
 
 ## 功能特性
 
-- 用户注册/登录/JWT 鉴权
-- 验证码发送（邮箱或手机号目标）
-- 聊天会话创建、重命名、删除、查询
+- 聊天历史记录
 - SSE 流式聊天输出
+- 自动生成对话标题
+- 自动压缩聊天上下文并生成摘要
 - 全局/会话级提示词管理
-- 模型列表查询与模型切换
-- 文件上传与下载
-- OpenAPI/Knife4j 接口文档
+- 模型在线切换
 
 ## 技术栈
 
@@ -34,7 +34,7 @@ src/main/java/work/daqian/myai
 ├─ domain       # DTO/PO/VO
 ├─ config       # 配置类
 ├─ interceptor  # 鉴权拦截器
-├─ repository   # MongoDB 仓储
+├─ repository   # MongoDB Repository
 └─ util         # 工具类
 ```
 
@@ -59,31 +59,11 @@ cd myai
 ```
 
 2. 配置密钥与连接信息  
-项目通过 `src/main/resources/application.yaml` 读取环境变量（并包含 `secret` profile）。
-
-建议在本地创建 `src/main/resources/application-secret.yaml`（不要提交到 GitHub），至少包含以下键：
-
-```yaml
-SSL_KEY_STORE_PASSWORD: <your_ssl_password>
-DB_URL: jdbc:mysql://localhost:3306/<db_name>?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-DB_USERNAME: <db_user>
-DB_PASSWORD: <db_password>
-REDIS_HOST: localhost
-REDIS_PASSWORD: <redis_password>
-MONGODB_URI: mongodb://<user>:<pass>@localhost:27017/<db_name>?authSource=admin
-MAIL_USERNAME: <mail_user>
-MAIL_PASSWORD: <mail_auth_code>
-JWT_SECRET: <jwt_secret>
-AI_MODEL: <ollama_model_name>
-```
+配置 `src/main/resources/application-secret.yaml` 。
 
 3. 启动应用
 
-```bash
-mvn spring-boot:run
-```
-
-默认端口为 `5000`，并启用 HTTPS。
+默认端口为 `5000`，SSL 没有可以关闭。
 
 4. 打开接口文档
 
