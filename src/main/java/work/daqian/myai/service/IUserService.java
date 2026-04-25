@@ -17,8 +17,6 @@ public interface IUserService extends IService<User> {
 
     R<String> register(UserDTO registerForm);
 
-    R<String> login(UserDTO loginForm);
-
     R<String> me();
 
     R<Void> updateUserInfo(UserDTO updateForm);

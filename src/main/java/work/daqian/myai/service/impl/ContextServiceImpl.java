@@ -24,7 +24,7 @@ import work.daqian.myai.service.IModelService;
 import work.daqian.myai.service.SystemPromptService;
 import work.daqian.myai.util.BeanUtils;
 import work.daqian.myai.util.RedisUtil;
-import work.daqian.myai.util.UserContext;
+import work.daqian.myai.util.SecurityUtils;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -148,7 +148,7 @@ public class ContextServiceImpl implements ContextService {
 
     @Override
     public R<PromptDTO> queryGlobalSystemPrompt() {
-        Long userId = UserContext.getUser();
+        Long userId = SecurityUtils.getCurrentUserId();
         if (userId == null) throw new BadRequestException("未登录用户无法使用此功能");
         return R.ok(querySystemPrompt(userId));
     }
@@ -160,7 +160,7 @@ public class ContextServiceImpl implements ContextService {
 
     @Override
     public R<Void> updateGlobalSystemPrompt(PromptDTO prompt) {
-        Long userId = UserContext.getUser();
+        Long userId = SecurityUtils.getCurrentUserId();
         if (userId == null) throw new BadRequestException("未登录用户无法使用此功能");
         updatePrompt(userId, prompt);
         return R.ok();
@@ -249,7 +249,7 @@ public class ContextServiceImpl implements ContextService {
             return prompt != null ? prompt.getContent() : "";
         });
         if (!promptContent.isEmpty() || promptType.equals(PromptType.SUMMARY)) return promptContent;
-        Long userId = UserContext.getUser();
+        Long userId = SecurityUtils.getCurrentUserId();
         if (userId == null) return "";
         PromptType globalType = PromptType.fromValue(promptType.getValue() - 2);
         promptContent = redisUtil.cacheEmptyIfNE(globalType.getKeyPrefix(), userId, Duration.ofHours(1), (uid) -> {

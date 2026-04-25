@@ -31,7 +31,7 @@ import work.daqian.myai.service.IChatSessionService;
 import work.daqian.myai.service.IModelService;
 import work.daqian.myai.util.BeanUtils;
 import work.daqian.myai.util.RedisUtil;
-import work.daqian.myai.util.UserContext;
+import work.daqian.myai.util.SecurityUtils;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -80,7 +80,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
 
     @Override
     public R<String> create() {
-        Long userId = UserContext.getUser();
+        Long userId = SecurityUtils.getCurrentUserId();
         ChatSession chatSession = new ChatSession();
         chatSession.setUserId(userId); // 未登录用户 userId 为 null
         chatSession.setTitle("新对话");
@@ -101,7 +101,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
 
     @Override
     public R<String> listMySessions() {
-        Long userId = UserContext.getUser();
+        Long userId = SecurityUtils.getCurrentUserId();
         if (userId == null) return R.ok("");
         String vosJson = redisUtil.cacheEmptyIfNE(SESSION_LIST_PREFIX, userId, Duration.ofHours(1), (uid) -> {
             List<ChatSession> sessions = lambdaQuery()
@@ -129,7 +129,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         removeById(id);
         contextService.clear(id);
         messageRepository.deleteChatMessagesBySessionId(id);
-        redisTemplate.delete(SESSION_LIST_PREFIX + UserContext.getUser());
+        redisTemplate.delete(SESSION_LIST_PREFIX + SecurityUtils.getCurrentUserId());
         return R.ok();
     }
 

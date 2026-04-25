@@ -47,7 +47,9 @@ public class JwtUtil {
     public String createToken(LoginUserDTO userDTO) {
         // 1.生成jws
         return JWT.create()
+                .setSubject(userDTO.getUsername())
                 .setPayload(PAYLOAD_USER_KEY, userDTO)
+                .setIssuedAt(new Date())
                 .setExpiresAt(new Date(System.currentTimeMillis() + Duration.ofDays(7).toMillis()))
                 .setSigner(getSigner())
                 .sign();
@@ -194,6 +196,6 @@ public class JwtUtil {
      * 清理刷新refresh-token的jti，本质是refresh-token作废
      */
     public void cleanJtiCache() {
-        stringRedisTemplate.delete(JwtConstants.JWT_REDIS_KEY_PREFIX + UserContext.getUser());
+        stringRedisTemplate.delete(JwtConstants.JWT_REDIS_KEY_PREFIX + SecurityUtils.getCurrentUserId());
     }
 }

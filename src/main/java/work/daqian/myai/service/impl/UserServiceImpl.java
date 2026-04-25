@@ -19,6 +19,7 @@ import work.daqian.myai.service.IUserService;
 import work.daqian.myai.util.*;
 
 import java.time.Duration;
+import java.util.List;
 
 /**
  * <p>
@@ -63,34 +64,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         save(user);
         LoginUserDTO loginUserDTO = new LoginUserDTO();
         loginUserDTO.setId(user.getId());
-
+        loginUserDTO.setRoles(List.of("ROLE_USER"));
+        loginUserDTO.setUsername(username);
         String token = generateToken(loginUserDTO);
-
-        return R.ok(token);
-    }
-
-    @Override
-    public R<String> login(UserDTO loginForm) {
-        String username = loginForm.getUsername();
-        String password = loginForm.getPassword();
-        // 先根据用户名查询用户
-        User user = lambdaQuery().eq(User::getUsername, username).one();
-        if (user == null)
-            throw new BadRequestException("用户名或密码错误");
-
-        // 使用 matches 方法验证密码
-        if (!passwordEncoder.matches(password, user.getPassword()))
-            throw new BadRequestException("用户名或密码错误");
-        LoginUserDTO loginUserDTO = new LoginUserDTO();
-        loginUserDTO.setId(user.getId());
-        String token = generateToken(loginUserDTO);
-
         return R.ok(token);
     }
 
     @Override
     public R<String> me() {
-        Long userId = UserContext.getUser();
+        Long userId = SecurityUtils.getCurrentUserId();
         String voJson = redisUtil.cacheEmptyIfNE(USER_KEY_PREFIX, userId, Duration.ofHours(1), (uid) -> {
             User me = getById(userId);
             UserVO userVO = BeanUtils.copyBean(me, UserVO.class);
@@ -108,7 +90,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public R<Void> updateUserInfo(UserDTO updateForm) {
-        Long userId = UserContext.getUser();
+        Long userId = SecurityUtils.getCurrentUserId();
         if (userId == null) throw new BadRequestException("用户未登录");
         User user = BeanUtils.copyBean(updateForm, User.class);
         user.setId(userId);

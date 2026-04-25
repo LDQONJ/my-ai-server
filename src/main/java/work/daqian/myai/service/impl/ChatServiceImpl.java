@@ -22,7 +22,7 @@ import work.daqian.myai.service.ChatMessageService;
 import work.daqian.myai.service.ChatService;
 import work.daqian.myai.service.ContextService;
 import work.daqian.myai.service.IModelService;
-import work.daqian.myai.util.UserContext;
+import work.daqian.myai.util.SecurityUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +70,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
 
     @Override
     public Flux<String> streamChat(ChatFormDTO chatForm) {
-        Long userId = UserContext.getUser();
+        Long userId = SecurityUtils.getCurrentUserId();
         String sessionId = chatForm.getSessionId();
         Boolean think = chatForm.getThink();
         Boolean enablePrompt = chatForm.getPrompt();

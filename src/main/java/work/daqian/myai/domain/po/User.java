@@ -43,6 +43,8 @@ public class User implements Serializable {
 
     private String avatar;
 
+    private String roles;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

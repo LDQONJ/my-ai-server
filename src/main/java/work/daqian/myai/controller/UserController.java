@@ -34,12 +34,6 @@ public class UserController {
         return userService.register(registerForm);
     }
 
-    @PostMapping("/login")
-    @Operation(summary = "用户登录")
-    public R<String> login(@RequestBody UserDTO loginForm) {
-        return userService.login(loginForm);
-    }
-
     @GetMapping("/me")
     @Operation(summary = "查询用户信息")
     @ApiResponse(responseCode = "200", description = "OK",
