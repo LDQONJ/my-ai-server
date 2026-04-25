@@ -113,6 +113,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         User user = BeanUtils.copyBean(updateForm, User.class);
         user.setId(userId);
         updateById(user);
+        redisTemplate.delete(USER_KEY_PREFIX + userId);
         return R.ok();
     }
 
