@@ -3,6 +3,8 @@ package work.daqian.myai.advice;
 
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import work.daqian.myai.common.R;
@@ -14,6 +16,18 @@ import work.daqian.myai.util.WebUtils;
 @RestControllerAdvice
 @Slf4j
 public class CommonExceptionAdvice {
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public Object handleAccessDeniedException(AccessDeniedException e) {
+        log.debug("访问被拒绝 -> {}", e.getMessage());
+        return processResponse(403, 403, "没有访问权限");
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public Object handleAuthenticationException(AuthenticationException e) {
+        log.debug("认证失败 -> {}", e.getMessage());
+        return processResponse(401, 401, "未登录或登录状态失效");
+    }
 
     @ExceptionHandler(DbException.class)
     public Object handleDbException(DbException e) {

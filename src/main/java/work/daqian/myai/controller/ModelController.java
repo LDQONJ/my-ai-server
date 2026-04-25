@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -54,6 +55,7 @@ public class ModelController {
 
     @Operation(summary = "更换模型", description = "切换成指定模型")
     @GetMapping("/change")
+    @PreAuthorize("hasRole('ADMIN')")
     public R<Void> changeModel(@RequestParam("id") Long id) {
         return modelService.changeModel(id);
     }
