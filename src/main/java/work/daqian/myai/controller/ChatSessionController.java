@@ -12,8 +12,6 @@ import work.daqian.myai.common.R;
 import work.daqian.myai.domain.vo.ChatSessionVO;
 import work.daqian.myai.service.IChatSessionService;
 
-import java.util.List;
-
 /**
  * <p>
  *  前端控制器
@@ -38,7 +36,7 @@ public class ChatSessionController {
 
     @GetMapping("/list")
     @Operation(summary = "获取当前用户的会话列表")
-    public R<List<ChatSessionVO>> list() {
+    public R<String> list() {
         return sessionService.listMySessions();
     }
 

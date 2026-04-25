@@ -1,12 +1,10 @@
 package work.daqian.myai.service;
 
+import com.baomidou.mybatisplus.extension.service.IService;
 import reactor.core.publisher.Flux;
 import work.daqian.myai.common.R;
 import work.daqian.myai.domain.po.ChatSession;
-import com.baomidou.mybatisplus.extension.service.IService;
 import work.daqian.myai.domain.vo.ChatSessionVO;
-
-import java.util.List;
 
 /**
  * <p>
@@ -22,7 +20,7 @@ public interface IChatSessionService extends IService<ChatSession> {
 
     R<Void> rename(String sessionId, String title);
 
-    R<List<ChatSessionVO>> listMySessions();
+    R<String> listMySessions();
 
     R<Void> delete(String id);
 

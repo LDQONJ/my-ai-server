@@ -1,8 +1,10 @@
 package work.daqian.myai.common;
 
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import work.daqian.myai.util.JsonStrSerializer;
 
 import static work.daqian.myai.constant.ErrorInfo.Code.FAILED;
 import static work.daqian.myai.constant.ErrorInfo.Code.SUCCESS;
@@ -17,6 +19,7 @@ public class R<T> {
     @Schema(description = "响应消息", example = "OK")
     private String msg;
     @Schema(description = "响应数据")
+    @JsonSerialize(using = JsonStrSerializer.class)
     private T data;
     @Schema(description = "请求ID", example = "123456789")
     private String requestId;

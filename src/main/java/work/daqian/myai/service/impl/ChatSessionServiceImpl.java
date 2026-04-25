@@ -1,12 +1,14 @@
 package work.daqian.myai.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,14 +30,15 @@ import work.daqian.myai.service.ContextService;
 import work.daqian.myai.service.IChatSessionService;
 import work.daqian.myai.service.IModelService;
 import work.daqian.myai.util.BeanUtils;
+import work.daqian.myai.util.RedisUtil;
 import work.daqian.myai.util.UserContext;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.stream.Collectors;
 
 import static work.daqian.myai.service.impl.ChatServiceImpl.toSSEDone;
 import static work.daqian.myai.service.impl.ChatServiceImpl.webClient;
@@ -61,6 +64,12 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
 
     private final IModelService modelService;
 
+    private final RedisUtil redisUtil;
+
+    private final StringRedisTemplate redisTemplate;
+
+    private static final String SESSION_LIST_PREFIX = "session:list:uid:";
+
     private final ObjectMapper mapper;
 
     private final PromptBuilder promptBuilder;
@@ -77,6 +86,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         chatSession.setTitle("新对话");
         save(chatSession);
         String sessionId = chatSession.getId();
+        redisTemplate.delete(SESSION_LIST_PREFIX + userId);
         return R.ok(sessionId);
     }
 
@@ -90,18 +100,27 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     }
 
     @Override
-    public R<List<ChatSessionVO>> listMySessions() {
+    public R<String> listMySessions() {
         Long userId = UserContext.getUser();
-        if (userId == null) return R.ok(List.of());
-        List<ChatSession> sessions = lambdaQuery()
-                .eq(ChatSession::getUserId, userId)
-                .orderBy(true, false, ChatSession::getUpdateTime)
-                .list();
-        List<ChatSessionVO> vos = sessions.stream()
-                .filter(s -> !s.getTitle().equals("新对话"))
-                .map(s -> BeanUtils.copyBean(s, ChatSessionVO.class))
-                .collect(Collectors.toList());
-        return R.ok(vos);
+        if (userId == null) return R.ok("");
+        String vosJson = redisUtil.cacheEmptyIfNE("session:list:uid:", userId, Duration.ofHours(1), (uid) -> {
+            List<ChatSession> sessions = lambdaQuery()
+                    .eq(ChatSession::getUserId, uid)
+                    .orderBy(true, false, ChatSession::getUpdateTime)
+                    .list();
+            List<ChatSessionVO> vos = sessions.stream()
+                    .filter(s -> !s.getTitle().equals("新对话"))
+                    .map(s -> BeanUtils.copyBean(s, ChatSessionVO.class))
+                    .toList();
+            String result;
+            try {
+                result = mapper.writeValueAsString(vos);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+            return result;
+        });
+        return R.ok(vosJson);
     }
 
     @Override
@@ -110,6 +129,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         removeById(id);
         contextService.clear(id);
         messageRepository.deleteChatMessagesBySessionId(id);
+        redisTemplate.delete(SESSION_LIST_PREFIX + UserContext.getUser());
         return R.ok();
     }
 
