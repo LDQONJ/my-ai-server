@@ -1,7 +1,10 @@
 package work.daqian.myai.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -12,7 +15,9 @@ import work.daqian.myai.exception.BadRequestException;
 import work.daqian.myai.mapper.ModelMapper;
 import work.daqian.myai.service.IModelService;
 import work.daqian.myai.util.BeanUtils;
+import work.daqian.myai.util.RedisUtil;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -26,6 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 @Getter
 @Service
+@RequiredArgsConstructor
 public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements IModelService, InitializingBean {
 
     @Value("${ldq.ai.default-model}")
@@ -33,11 +39,25 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
 
     private AtomicReference<String> currentModel;
 
+    private final RedisUtil redisUtil;
+
+    private final ObjectMapper mapper;
+
     @Override
-    public R<List<ModelVO>> listAllModel() {
-        List<Model> list = list();
-        List<ModelVO> vos = BeanUtils.copyList(list, ModelVO.class);
-        return R.ok(vos);
+    public R<String> listAllModel() {
+        String modelList = redisUtil.cacheEmptyIfNE("model:list", null, Duration.ofHours(1), (id) -> {
+            List<Model> list = list();
+            if (list == null || list.isEmpty()) return "";
+            List<ModelVO> vos = BeanUtils.copyList(list, ModelVO.class);
+            String vosJson;
+            try {
+                vosJson = mapper.writeValueAsString(vos);
+            } catch (JsonProcessingException e) {
+                return "";
+            }
+            return vosJson;
+        });
+        return R.ok(modelList);
     }
 
     @Override

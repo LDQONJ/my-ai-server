@@ -3,6 +3,9 @@ package work.daqian.myai.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -36,6 +39,22 @@ public class ChatSessionController {
 
     @GetMapping("/list")
     @Operation(summary = "获取当前用户的会话列表")
+    @ApiResponse(responseCode = "200", description = "OK",
+            content = @Content(mediaType = "application/json",
+                    examples = @ExampleObject(value = """
+                            {
+                                "code": 200,
+                                "msg": "OK",
+                                "data": [
+                                    {
+                                        "id": "b508c1984bbfa5a3122ff50324b83d26",
+                                        "title": "早安问候",
+                                        "lastMessage": "早上好！有什么我可以帮你的吗？",
+                                        "messages": null
+                                    }
+                                ]
+                            }
+                            """)))
     public R<String> list() {
         return sessionService.listMySessions();
     }

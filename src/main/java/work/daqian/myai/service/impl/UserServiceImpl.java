@@ -1,6 +1,8 @@
 package work.daqian.myai.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,10 +16,7 @@ import work.daqian.myai.domain.vo.UserVO;
 import work.daqian.myai.exception.BadRequestException;
 import work.daqian.myai.mapper.UserMapper;
 import work.daqian.myai.service.IUserService;
-import work.daqian.myai.util.BeanUtils;
-import work.daqian.myai.util.JwtUtil;
-import work.daqian.myai.util.UserContext;
-import work.daqian.myai.util.WebUtils;
+import work.daqian.myai.util.*;
 
 import java.time.Duration;
 
@@ -38,6 +37,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     private final JwtUtil jwtUtil;
 
     private final PasswordEncoder passwordEncoder;
+
+    private final RedisUtil redisUtil;
+
+    private final ObjectMapper mapper;
+
+    private static final String USER_KEY_PREFIX = "user:uid:";
 
     @Override
     @Transactional
@@ -84,11 +89,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     }
 
     @Override
-    public R<UserVO> me() {
+    public R<String> me() {
         Long userId = UserContext.getUser();
-        User me = getById(userId);
-        UserVO userVO = BeanUtils.copyBean(me, UserVO.class);
-        return R.ok(userVO);
+        String voJson = redisUtil.cacheEmptyIfNE(USER_KEY_PREFIX, userId, Duration.ofHours(1), (uid) -> {
+            User me = getById(userId);
+            UserVO userVO = BeanUtils.copyBean(me, UserVO.class);
+            String json;
+            try {
+                json = mapper.writeValueAsString(userVO);
+            } catch (JsonProcessingException e) {
+                return "";
+            }
+            return json;
+        });
+
+        return R.ok(voJson);
     }
 
     @Override

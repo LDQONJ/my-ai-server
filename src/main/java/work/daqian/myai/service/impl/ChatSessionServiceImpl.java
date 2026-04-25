@@ -103,7 +103,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     public R<String> listMySessions() {
         Long userId = UserContext.getUser();
         if (userId == null) return R.ok("");
-        String vosJson = redisUtil.cacheEmptyIfNE("session:list:uid:", userId, Duration.ofHours(1), (uid) -> {
+        String vosJson = redisUtil.cacheEmptyIfNE(SESSION_LIST_PREFIX, userId, Duration.ofHours(1), (uid) -> {
             List<ChatSession> sessions = lambdaQuery()
                     .eq(ChatSession::getUserId, uid)
                     .orderBy(true, false, ChatSession::getUpdateTime)
