@@ -139,7 +139,7 @@ public class ContextServiceImpl implements ContextService {
             systemPrompt.setContent(message.getContent());
             promptService.saveOrUpdate(systemPrompt);
             // 裁剪redis中的历史记录
-            history.subList(MAX_CONTEXT / 2, history.size() - 1);
+            history = history.subList(MAX_CONTEXT / 2, history.size() - 1);
             redisTemplate.opsForValue().set(key, mapper.writeValueAsString(history), Duration.ofHours(1));
         } catch (Exception e) {
             throw new BizIllegalException("压缩上下文失败");
