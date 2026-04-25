@@ -11,8 +11,8 @@ public enum PromptType {
     GLOBAL_RULES(2, "context:rules:uid"),
     PERSONA(3, "context:persona:sid:"),
     RULES(4, "context:rules:sid:"),
-    SUMMARY(5, "context:summary:sid"),
-    HISTORY(6, "context:history:sid"),
+    SUMMARY(5, "context:summary:sid:"),
+    HISTORY(6, "context:history:sid:"),
     ;
     private final int value;
     private final String keyPrefix;
