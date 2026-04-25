@@ -75,14 +75,3 @@ ldq:
 knife4j:
   enable: true
 
-auth:
-  resource:
-    enable: true
-    include-login-paths:
-      - "/**"  # 拦截所有路径，根据实际需要调整
-    exclude-login-paths:
-      - "/verifyCode/**"  # 排除验证码相关路径
-      - "/users/register"  # 排除注册路径
-      - "/users/login"     # 排除登录路径
-      - "/files/**"
-
