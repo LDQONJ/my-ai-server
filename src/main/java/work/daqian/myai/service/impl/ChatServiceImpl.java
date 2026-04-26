@@ -153,7 +153,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
                     "reasoning_effort", "high",
                     "stream", true,
                     "stream_options", Map.of("include_usage", false),
-                    "extra_body", Map.of("enable_thinking", think)
+                    "enable_thinking", think
             );
         } else {
             client = ollamaClient;
