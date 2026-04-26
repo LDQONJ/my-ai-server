@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
+import work.daqian.myai.annotation.RateLimit;
 import work.daqian.myai.domain.dto.ChatFormDTO;
 import work.daqian.myai.service.ChatService;
 
@@ -24,6 +25,7 @@ public class ChatController {
 
     @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "流式聊天", description = "通过 Server-Sent Events (SSE) 发送聊天内容")
+    @RateLimit(limit = 2, limitType = RateLimit.LimitType.USER, message = "未登录用户每分钟最多发送两条消息")
     public Flux<String> streamChat(@RequestBody ChatFormDTO chatForm) {
         // log.info("收到聊天消息：{}", chatForm);
         return chatService.streamChat(chatForm);

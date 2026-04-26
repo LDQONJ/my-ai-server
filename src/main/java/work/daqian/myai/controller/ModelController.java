@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import work.daqian.myai.annotation.RateLimit;
 import work.daqian.myai.common.R;
 import work.daqian.myai.domain.vo.ModelVO;
 import work.daqian.myai.service.IModelService;
@@ -50,6 +51,7 @@ public class ModelController {
                             }
                             """)))
     @GetMapping("/list")
+    @RateLimit(limit = 5, period = 20, limitType = RateLimit.LimitType.IP, message = "访问频繁，请稍后再试")
     public R<String> listAllModel() {
         return modelService.listAllModel();
     }
