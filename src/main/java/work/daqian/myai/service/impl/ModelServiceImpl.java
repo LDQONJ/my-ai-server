@@ -45,8 +45,8 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
 
     @Override
     public R<String> listAllModel() {
-        String modelList = redisUtil.cacheEmptyIfNE("model:list", null, Duration.ofHours(1), (id) -> {
-            List<Model> list = list();
+        String modelList = redisUtil.cacheEmptyIfNE("model:list", "", Duration.ofHours(1), (id) -> {
+            List<Model> list = lambdaQuery().eq(Model::getEnable, true).list();
             if (list == null || list.isEmpty()) return "";
             List<ModelVO> vos = BeanUtils.copyList(list, ModelVO.class);
             String vosJson;

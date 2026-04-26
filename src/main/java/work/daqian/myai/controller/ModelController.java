@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -35,19 +36,19 @@ public class ModelController {
     @Operation(summary = "可用模型列表", description = "获取所有可用模型")
     @ApiResponse(responseCode = "200", description = "OK",
             content = @Content(mediaType = "application/json",
-            examples = @ExampleObject(value = """
-                    {
-                        "code": 200,
-                        "msg": "OK",
-                        "data": [
+                    examples = @ExampleObject(value = """
                             {
-                                "id": 1,
-                                "name": "DeepSeek",
-                                "description": "xxx"
+                                "code": 200,
+                                "msg": "OK",
+                                "data": [
+                                    {
+                                        "id": 1,
+                                        "name": "DeepSeek",
+                                        "description": "xxx"
+                                    }
+                                ]
                             }
-                        ]
-                    }
-                    """)))
+                            """)))
     @GetMapping("/list")
     public R<String> listAllModel() {
         return modelService.listAllModel();
@@ -55,8 +56,11 @@ public class ModelController {
 
     @Operation(summary = "更换模型", description = "切换成指定模型")
     @GetMapping("/change")
-    @PreAuthorize("hasRole('ADMIN')")
-    public R<Void> changeModel(@RequestParam("id") Long id) {
+    @PreAuthorize("""
+            hasRole('ADMIN') OR
+            (hasRole('USER') AND #id != 6)
+            """)
+    public R<Void> changeModel(@P("id") @RequestParam("id") Long id) {
         return modelService.changeModel(id);
     }
 

@@ -20,6 +20,8 @@ public class Model {
 
     private String description;
 
+    private Boolean enable;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
