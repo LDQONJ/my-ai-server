@@ -14,4 +14,5 @@ public class ChatFormDTO {
     private Boolean think;
     @Schema(description = "是否开启提示词功能", example = "true")
     private Boolean prompt;
+    private Long modelId;
 }

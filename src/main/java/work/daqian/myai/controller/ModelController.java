@@ -7,14 +7,12 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import work.daqian.myai.common.R;
-import work.daqian.myai.domain.vo.ModelVO;
 import work.daqian.myai.service.IModelService;
 
 /**
@@ -56,18 +54,7 @@ public class ModelController {
 
     @Operation(summary = "更换模型", description = "切换成指定模型")
     @GetMapping("/change")
-    @PreAuthorize("""
-            hasRole('ADMIN') OR
-            (hasRole('USER') AND #id != 6)
-            """)
     public R<Void> changeModel(@P("id") @RequestParam("id") Long id) {
         return modelService.changeModel(id);
     }
-
-    @Operation(summary = "当前模型", description = "获取当前正在使用的模型")
-    @GetMapping
-    public R<ModelVO> currentModel() {
-        return modelService.currentModel();
-    }
-
 }

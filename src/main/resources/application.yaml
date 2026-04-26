@@ -75,3 +75,7 @@ ldq:
 knife4j:
   enable: true
 
+aliyun:
+  api:
+    key: ${QWEN_API_KEY}
+

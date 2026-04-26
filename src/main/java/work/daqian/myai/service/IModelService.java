@@ -3,7 +3,6 @@ package work.daqian.myai.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import work.daqian.myai.common.R;
 import work.daqian.myai.domain.po.Model;
-import work.daqian.myai.domain.vo.ModelVO;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -22,6 +21,4 @@ public interface IModelService extends IService<Model> {
     R<Void> changeModel(Long id);
 
     AtomicReference<String> getCurrentModel();
-
-    R<ModelVO> currentModel();
 }

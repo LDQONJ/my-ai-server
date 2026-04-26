@@ -31,7 +31,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static work.daqian.myai.service.impl.ChatServiceImpl.webClient;
+import static work.daqian.myai.service.impl.ChatServiceImpl.ollamaClient;
+
 
 @Slf4j
 @Service
@@ -131,7 +132,7 @@ public class ContextServiceImpl implements ContextService {
                 """));
         ChatRequest request = new ChatRequest(modelService.getCurrentModel().get(), history, false, false);
         try {
-            ChatResponse response = webClient.post().uri("/api/chat").contentType(MediaType.APPLICATION_JSON).bodyValue(request).retrieve().bodyToMono(ChatResponse.class).block();
+            ChatResponse response = ollamaClient.post().uri("/api/chat").contentType(MediaType.APPLICATION_JSON).bodyValue(request).retrieve().bodyToMono(ChatResponse.class).block();
             Message message = response.getMessage();
             SystemPrompt systemPrompt = new SystemPrompt();
             systemPrompt.setSessionId(sessionId);

@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +25,7 @@ public class ChatController {
 
     @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "流式聊天", description = "通过 Server-Sent Events (SSE) 发送聊天内容")
-    public Flux<String> streamChat(@RequestBody ChatFormDTO chatForm) {
+    public Flux<String> streamChat(@P("chatForm") @RequestBody ChatFormDTO chatForm) {
         // log.info("收到聊天消息：{}", chatForm);
         return chatService.streamChat(chatForm);
     }

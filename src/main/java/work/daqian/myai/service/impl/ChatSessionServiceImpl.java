@@ -40,8 +40,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
+import static work.daqian.myai.service.impl.ChatServiceImpl.ollamaClient;
 import static work.daqian.myai.service.impl.ChatServiceImpl.toSSEDone;
-import static work.daqian.myai.service.impl.ChatServiceImpl.webClient;
 
 /**
  * <p>
@@ -173,13 +173,13 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
         String currentModel = modelService.getCurrentModel().get();
         ChatRequest request = new ChatRequest(
                 // deepseek-r1 无法关闭思考模式，导致生成标题的过程属于思考内容，往往不会服从指令，需要使用其他轻量模型生成标题
-                currentModel.startsWith("deepseek-r1") ? "qwen3.5:4b" : currentModel,
+                currentModel.startsWith("deepseek") ? "qwen3.5:9b" : currentModel,
                 prompt,
                 true,
                 false
         );
         StringBuilder contentBuilder = new StringBuilder();
-        return webClient.post()
+        return ollamaClient.post()
                 .uri("/api/chat")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)

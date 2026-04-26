@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
+import work.daqian.myai.enums.Provider;
 
 import java.time.LocalDateTime;
 
@@ -13,6 +14,8 @@ public class Model {
 
     @TableId(value = "id", type = IdType.ASSIGN_ID)
     private Long id;
+
+    private Provider provider;
 
     private String name;
 

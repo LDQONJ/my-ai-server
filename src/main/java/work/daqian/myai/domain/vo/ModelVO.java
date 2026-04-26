@@ -1,6 +1,7 @@
 package work.daqian.myai.domain.vo;
 
 import lombok.Data;
+import work.daqian.myai.enums.Provider;
 
 @Data
 public class ModelVO {
@@ -9,4 +10,6 @@ public class ModelVO {
     private String name;
 
     private String description;
+
+    private Provider provider;
 }

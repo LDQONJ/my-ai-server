@@ -11,11 +11,12 @@ import org.springframework.stereotype.Service;
 import work.daqian.myai.common.R;
 import work.daqian.myai.domain.po.Model;
 import work.daqian.myai.domain.vo.ModelVO;
-import work.daqian.myai.exception.BadRequestException;
+import work.daqian.myai.enums.Provider;
 import work.daqian.myai.mapper.ModelMapper;
 import work.daqian.myai.service.IModelService;
 import work.daqian.myai.util.BeanUtils;
 import work.daqian.myai.util.RedisUtil;
+import work.daqian.myai.util.SecurityAssert;
 
 import java.time.Duration;
 import java.util.List;
@@ -62,20 +63,25 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
 
     @Override
     public R<Void> changeModel(Long id) {
-        String current = currentModel.get();
-        Model model = getById(id);
-        if (model == null) throw new BadRequestException("模型不存在");
-        boolean success = currentModel.compareAndSet(current, model.getFullName());
-        if (!success) throw new BadRequestException("修改失败");
+        String providerAndName = redisUtil.cacheEmptyIfNE(
+                "model:id:",
+                id,
+                Duration.ofHours(1),
+                (mid) -> {
+                    Model model = getById(mid);
+                    return model.getProvider().getValue() + "," + model.getFullName();
+                }
+        );
+        String[] split = providerAndName.split(",");
+        if (split.length == 2)
+            if (split[0].equals("1")) {
+                // 只缓存Ollama本地模型，防止生成标题以及提取摘要时模型频繁更换
+                currentModel.set(split[1]);
+            } else {
+                // 校验是否有对该模型的使用权限
+                SecurityAssert.canAccessModel(Provider.fromValue(Integer.parseInt(split[0])));
+            }
         return R.ok();
-    }
-
-    @Override
-    public R<ModelVO> currentModel() {
-        String current = currentModel.get();
-        Model model = lambdaQuery().eq(Model::getFullName, current).one();
-        ModelVO modelVO = BeanUtils.copyBean(model, ModelVO.class);
-        return R.ok(modelVO);
     }
 
     @Override
