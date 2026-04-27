@@ -1,6 +1,7 @@
 # myai - AI 聊天应用后端服务器
 
 一个基于 Spring Boot 3 + Spring AI + Ollama 的 AI 聊天后端服务，支持用户管理、对话管理、提示词管理、模型切换、SSE 流式输出等功能。
+新增对阿里云模型、谷歌模型的适配。
 
 前端项目：[my-ai-chat](https://github.com/LDQONJ/my-ai-chat)
 
@@ -28,6 +29,7 @@
 
 ```text
 src/main/java/work/daqian/myai
+├─ adapter      # 不同模型供应商请求和响应的处理
 ├─ controller   # API 接口层
 ├─ service      # 业务层
 ├─ mapper       # MyBatis-Plus Mapper
