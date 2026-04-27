@@ -80,7 +80,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
         );
         String[] split = providerAndName.split(",");
         Provider provider;
-        String modelName = "qwen3.5:9b";
+        String modelName;
         if (split.length == 2) {
             int value = Integer.parseInt(split[0]);
             Provider p = Provider.fromValue(value == 2 ? 1 : value);
@@ -89,6 +89,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
             modelName = split[1];
         } else {
             provider = Provider.OLLAMA;
+            modelName = "qwen3.5:9b";
         }
 
         List<Message> history = contextService.getHistory(sessionId, false);
@@ -145,7 +146,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
                             CompletableFuture.runAsync(() -> {
                                 try {
                                     messageService.saveUserMessage(sessionId, userId, text);
-                                    messageService.saveAssistantMessage(sessionId, userId, cont, thin);
+                                    messageService.saveAssistantMessage(sessionId, userId, modelName, cont, thin);
                                     contextService.saveHistory(sessionId, history);
                                     ChatSession session = sessionMapper.selectById(sessionId);
                                     if (session != null) {

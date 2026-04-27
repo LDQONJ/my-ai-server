@@ -9,6 +9,7 @@ public interface ChatMessageService {
     void saveUserMessage(String sessionId, Long userId, String content);
     void saveAssistantMessage(String sessionId,
                               Long userId,
+                              String modelName,
                               String content,
                               String thinking);
 

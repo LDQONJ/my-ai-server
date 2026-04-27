@@ -24,6 +24,8 @@ public class ChatMessage {
 
     private String thinking;
 
+    private String modelName;
+
     @CreatedDate
     private LocalDateTime createTime;
 }
