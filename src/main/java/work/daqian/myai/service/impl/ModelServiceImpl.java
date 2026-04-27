@@ -20,6 +20,7 @@ import work.daqian.myai.util.SecurityAssert;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -82,6 +83,11 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
                 SecurityAssert.canAccessModel(Provider.fromValue(Integer.parseInt(split[0])));
             }
         return R.ok();
+    }
+
+    @Override
+    public List<Model> getByFullNames(Set<String> modelNames) {
+        return baseMapper.selectBatchFullNames(modelNames);
     }
 
     @Override

@@ -26,7 +26,7 @@ import work.daqian.myai.service.IModelService;
 @RestController
 @RequestMapping("/model")
 @RequiredArgsConstructor
-@Tag(name = "LLM 模型相关接口")
+@Tag(name = "模型相关接口")
 public class ModelController {
 
     private final IModelService modelService;

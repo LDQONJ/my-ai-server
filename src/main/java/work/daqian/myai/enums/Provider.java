@@ -10,8 +10,9 @@ import work.daqian.myai.exception.BadRequestException;
 @AllArgsConstructor
 public enum Provider {
     OLLAMA(1, "本地Ollama模型"),
-    BAILIAN(2, "阿里云百炼模型api"),
-    RESTRICT(3, "限制模型"),
+    RESTRICT(2, "限制模型"),
+    ALIBABA(3, "阿里云模型api"),
+    GOOGLE(4, "谷歌模型api"),
     ;
 
     @EnumValue

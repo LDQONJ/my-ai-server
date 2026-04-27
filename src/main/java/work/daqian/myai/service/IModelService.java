@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import work.daqian.myai.common.R;
 import work.daqian.myai.domain.po.Model;
 
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -21,4 +23,6 @@ public interface IModelService extends IService<Model> {
     R<Void> changeModel(Long id);
 
     AtomicReference<String> getCurrentModel();
+
+    List<Model> getByFullNames(Set<String> modelNames);
 }

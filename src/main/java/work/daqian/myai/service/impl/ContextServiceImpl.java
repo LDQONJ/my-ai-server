@@ -7,8 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import work.daqian.myai.adapter.OllamaModelAdapter;
 import work.daqian.myai.common.R;
-import work.daqian.myai.domain.dto.ChatRequest;
 import work.daqian.myai.domain.dto.ChatResponse;
 import work.daqian.myai.domain.dto.Message;
 import work.daqian.myai.domain.dto.PromptDTO;
@@ -30,8 +30,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import static work.daqian.myai.service.impl.ChatServiceImpl.ollamaClient;
+import java.util.Map;
 
 
 @Slf4j
@@ -54,6 +53,8 @@ public class ContextServiceImpl implements ContextService {
     private final IModelService modelService;
 
     private final RedisUtil redisUtil;
+
+    private final OllamaModelAdapter ollamaModelAdapter;
 
     @Override
     public List<Message> getHistory(String sessionId, boolean onlyCache) {
@@ -130,9 +131,14 @@ public class ContextServiceImpl implements ContextService {
                 
                 只需回复摘要内容。
                 """));
-        ChatRequest request = new ChatRequest(modelService.getCurrentModel().get(), history, false, false);
+        Object request = Map.of(
+                "model", modelService.getCurrentModel().get(),
+                "messages", history,
+                "stream", false,
+                "think", false
+        );
         try {
-            ChatResponse response = ollamaClient.post().uri("/api/chat").contentType(MediaType.APPLICATION_JSON).bodyValue(request).retrieve().bodyToMono(ChatResponse.class).block();
+            ChatResponse response = ollamaModelAdapter.buildWebClient().post().uri("/api/chat").contentType(MediaType.APPLICATION_JSON).bodyValue(request).retrieve().bodyToMono(ChatResponse.class).block();
             Message message = response.getMessage();
             SystemPrompt systemPrompt = new SystemPrompt();
             systemPrompt.setSessionId(sessionId);

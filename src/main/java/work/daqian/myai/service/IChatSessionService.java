@@ -6,6 +6,9 @@ import work.daqian.myai.common.R;
 import work.daqian.myai.domain.po.ChatSession;
 import work.daqian.myai.domain.vo.ChatSessionVO;
 
+import java.util.List;
+import java.util.Set;
+
 /**
  * <p>
  *  服务类
@@ -27,4 +30,6 @@ public interface IChatSessionService extends IService<ChatSession> {
     R<ChatSessionVO> queryById(String id);
 
     Flux<String> generateTitle(String id);
+
+    List<ChatSession> getByIds(Set<String> sessionIds);
 }

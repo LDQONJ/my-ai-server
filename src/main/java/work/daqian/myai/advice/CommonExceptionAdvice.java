@@ -7,6 +7,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import work.daqian.myai.common.R;
 import work.daqian.myai.constant.Constant;
 import work.daqian.myai.exception.CommonException;
@@ -16,6 +17,14 @@ import work.daqian.myai.util.WebUtils;
 @RestControllerAdvice
 @Slf4j
 public class CommonExceptionAdvice {
+
+    @ExceptionHandler(WebClientResponseException.ServiceUnavailable.class)
+    public Object handleServiceUnavailableException(WebClientResponseException.ServiceUnavailable e) {
+        String message = e.getMessage();
+        log.error("api 调用失败 -> {}", message);
+        if (message.startsWith("503 ")) return processResponse(503, 503, "api 暂时不可用");
+        return processResponse(400, 400, "api 调用异常");
+    }
 
     @ExceptionHandler(AccessDeniedException.class)
     public Object handleAccessDeniedException(AccessDeniedException e) {

@@ -1,7 +1,11 @@
 package work.daqian.myai.mapper;
 
+import org.apache.ibatis.annotations.Param;
 import work.daqian.myai.domain.po.Model;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+
+import java.util.List;
+import java.util.Set;
 
 /**
  * <p>
@@ -13,4 +17,5 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
  */
 public interface ModelMapper extends BaseMapper<Model> {
 
+    List<Model> selectBatchFullNames(@Param("modelNames") Set<String> modelNames);
 }

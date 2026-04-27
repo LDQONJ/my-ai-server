@@ -13,8 +13,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
+import work.daqian.myai.adapter.OllamaModelAdapter;
 import work.daqian.myai.common.R;
-import work.daqian.myai.domain.dto.ChatRequest;
 import work.daqian.myai.domain.dto.Message;
 import work.daqian.myai.domain.po.ChatSession;
 import work.daqian.myai.domain.vo.ChatMessageVO;
@@ -30,6 +30,7 @@ import work.daqian.myai.service.ContextService;
 import work.daqian.myai.service.IChatSessionService;
 import work.daqian.myai.service.IModelService;
 import work.daqian.myai.util.BeanUtils;
+import work.daqian.myai.util.ChatUtil;
 import work.daqian.myai.util.RedisUtil;
 import work.daqian.myai.util.SecurityUtils;
 
@@ -37,11 +38,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-import static work.daqian.myai.service.impl.ChatServiceImpl.ollamaClient;
-import static work.daqian.myai.service.impl.ChatServiceImpl.toSSEDone;
+import static work.daqian.myai.util.ChatUtil.toSSEDone;
 
 /**
  * <p>
@@ -73,6 +74,8 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     private final ObjectMapper mapper;
 
     private final PromptBuilder promptBuilder;
+
+    private final OllamaModelAdapter ollamaModelAdapter;
 
     @Autowired
     @Qualifier("taskExecutor")
@@ -171,15 +174,15 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                 .build();
         List<Message> prompt = promptBuilder.build(promptContext);
         String currentModel = modelService.getCurrentModel().get();
-        ChatRequest request = new ChatRequest(
+        Object request = Map.of(
                 // deepseek-r1 无法关闭思考模式，导致生成标题的过程属于思考内容，往往不会服从指令，需要使用其他轻量模型生成标题
-                currentModel.startsWith("deepseek") ? "qwen3.5:9b" : currentModel,
-                prompt,
-                true,
-                false
+                "model", currentModel.startsWith("deepseek") ? "qwen3.5:9b" : currentModel,
+                "messages", prompt,
+                "stream", true,
+                "think", false
         );
         StringBuilder contentBuilder = new StringBuilder();
-        return ollamaClient.post()
+        return ollamaModelAdapter.buildWebClient().post()
                 .uri("/api/chat")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
@@ -198,6 +201,11 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                 }));
     }
 
+    @Override
+    public List<ChatSession> getByIds(Set<String> sessionIds) {
+        return baseMapper.selectBatchIds(sessionIds);
+    }
+
     // 解析 Ollama chunk
     public Flux<String> parseChunk(String chunk, StringBuilder contentBuilder) {
         try {
@@ -210,21 +218,13 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                 JsonNode message = node.path("message");
                 String content = message.path("content").asText();
                 if (content != null && !content.isEmpty()) {
-                    content.codePoints().forEach(cp -> result.add(toJson(new String(Character.toChars(cp)))));
+                    content.codePoints().forEach(cp -> result.add(ChatUtil.toJson("content", new String(Character.toChars(cp)))));
                     contentBuilder.append(content);
                 }
             }
             return Flux.fromIterable(result);
         } catch (Exception e) {
             return Flux.empty();
-        }
-    }
-
-    private String toJson(String text) {
-        try {
-            return mapper.writeValueAsString(Map.of("type", "content", "content", text));
-        } catch (Exception e) {
-            return "";
         }
     }
 }

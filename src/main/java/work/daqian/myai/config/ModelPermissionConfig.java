@@ -11,7 +11,7 @@ public class ModelPermissionConfig {
 
     private static final Map<String, Set<Provider>> ROLE_MODEL_PERMISSION = Map.of(
             "ROLE_USER", Set.of(Provider.OLLAMA),
-            "ROLE_ADMIN", Set.of(Provider.OLLAMA, Provider.BAILIAN, Provider.RESTRICT)
+            "ROLE_ADMIN", Set.of(Provider.OLLAMA, Provider.ALIBABA, Provider.RESTRICT, Provider.GOOGLE)
     );
 
     public static boolean hasPermission(String role, Provider provider) {

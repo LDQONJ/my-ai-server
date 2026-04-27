@@ -2,4 +2,12 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="work.daqian.myai.mapper.ModelMapper">
 
+	<select id="selectBatchFullNames" resultType="work.daqian.myai.domain.po.Model">
+		SELECT  *
+		FROM model
+		WHERE full_name IN
+		<foreach collection="modelNames" item="fullName" separator="," open="(" close=")">
+			#{fullName}
+		</foreach>
+	</select>
 </mapper>
