@@ -73,11 +73,11 @@ public class GoogleModelAdapter implements ModelAdapter {
                 ));
             }
         }
+        Map<String, Object> thinkingConfig = new HashMap<>(5);
+        thinkingConfig.put("includeThoughts", think);
+        if (!modelName.contains("2.5")) thinkingConfig.put("thinkingLevel", "high");
         Map<String, Map<String, Object>> generationConfig = Map.of(
-                "thinkingConfig", Map.of(
-                        "thinkingLevel", "high",
-                        "includeThoughts", think
-                )
+                "thinkingConfig", thinkingConfig
         );
         Map<String, Object> requestMap = new HashMap<>(5);
         requestMap.put("contents", contents);
