@@ -65,6 +65,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     }
 
     private @NonNull List<ChatMessageVO> convertToVOS(List<ChatMessage> messages) {
+        if (messages == null || messages.isEmpty()) return List.of();
         Set<String> modelNames = messages.stream().map(ChatMessage::getModelName).collect(Collectors.toSet());
         List<Model> models = modelService.getByFullNames(modelNames);
         Map<String, String> modelNameMap = models.stream().collect(Collectors.toMap(Model::getFullName, Model::getName));

@@ -8,7 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import work.daqian.myai.common.PageDTO;
 import work.daqian.myai.common.R;
+import work.daqian.myai.domain.dto.UsageDetailPageQuery;
 import work.daqian.myai.domain.vo.UsageDetailVO;
 import work.daqian.myai.service.IModelUsageDetailService;
 
@@ -33,7 +35,7 @@ public class ModelUsageDetailController {
 
     @GetMapping
     @Operation(summary = "查询使用详情", description = "查询用户所有的模型调用记录")
-    public R<List<UsageDetailVO>> queryUsageDetail() {
-        return usageDetailService.queryUsageDetail();
+    public R<PageDTO<UsageDetailVO>> queryUsageDetail(UsageDetailPageQuery pageQuery) {
+        return usageDetailService.queryUsageDetail(pageQuery);
     }
 }

@@ -1,10 +1,13 @@
 package work.daqian.myai.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import work.daqian.myai.common.PageDTO;
 import work.daqian.myai.common.R;
 import work.daqian.myai.common.SecurityUserDetails;
+import work.daqian.myai.domain.dto.UsageDetailPageQuery;
 import work.daqian.myai.domain.po.ChatSession;
 import work.daqian.myai.domain.po.Model;
 import work.daqian.myai.domain.po.ModelUsageDetail;
@@ -16,6 +19,7 @@ import work.daqian.myai.service.IModelService;
 import work.daqian.myai.service.IModelUsageDetailService;
 import work.daqian.myai.util.BeanUtils;
 import work.daqian.myai.util.SecurityUtils;
+import work.daqian.myai.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -37,14 +41,16 @@ public class ModelUsageDetailServiceImpl extends ServiceImpl<ModelUsageDetailMap
     private final IChatSessionService sessionService;
 
     @Override
-    public R<List<UsageDetailVO>> queryUsageDetail() {
+    public R<PageDTO<UsageDetailVO>> queryUsageDetail(UsageDetailPageQuery pageQuery) {
         SecurityUserDetails userDetails = SecurityUtils.getCurrentUser();
         if (userDetails == null) throw new BadRequestException("请先登录账号");
-        List<ModelUsageDetail> usageDetails = lambdaQuery()
+        Page<ModelUsageDetail> usageDetailPage = lambdaQuery()
                 .eq(ModelUsageDetail::getUserId, userDetails.getId())
+                .like(!StringUtils.isEmpty(pageQuery.getModelName()), ModelUsageDetail::getModelName, pageQuery.getModelName())
                 .orderByDesc(ModelUsageDetail::getCreateTime)
-                .list();
-        if (usageDetails.isEmpty()) return R.ok(List.of());
+                .page(com.baomidou.mybatisplus.extension.plugins.pagination.PageDTO.of(pageQuery.getPageNo(), pageQuery.getPageSize()));
+        List<ModelUsageDetail> usageDetails = usageDetailPage.getRecords();
+        if (usageDetails == null || usageDetails.isEmpty()) return R.ok(PageDTO.empty());
         Set<String> modelNames = new HashSet<>(usageDetails.size());
         Set<String> sessionIds = new HashSet<>(usageDetails.size());
         for (ModelUsageDetail usageDetail : usageDetails) {
@@ -66,6 +72,6 @@ public class ModelUsageDetailServiceImpl extends ServiceImpl<ModelUsageDetailMap
             vo.setContentTokens(vo.getCompletionTokens() - vo.getReasoningTokens());
             vos.add(vo);
         }
-        return R.ok(vos);
+        return R.ok(PageDTO.of((int) usageDetailPage.getTotal(), vos));
     }
 }
