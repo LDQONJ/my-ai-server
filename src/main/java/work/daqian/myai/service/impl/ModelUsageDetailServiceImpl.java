@@ -3,6 +3,7 @@ package work.daqian.myai.service.impl;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import work.daqian.myai.common.PageDTO;
 import work.daqian.myai.common.R;
@@ -21,8 +22,13 @@ import work.daqian.myai.util.BeanUtils;
 import work.daqian.myai.util.SecurityUtils;
 import work.daqian.myai.util.StringUtils;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static work.daqian.myai.constant.RedisConstants.USAGE_DETAIL_PREFIX;
+import static work.daqian.myai.constant.RedisConstants.USAGE_SUM_PREFIX;
 
 /**
  * <p>
@@ -40,8 +46,10 @@ public class ModelUsageDetailServiceImpl extends ServiceImpl<ModelUsageDetailMap
 
     private final IChatSessionService sessionService;
 
+    private final StringRedisTemplate redisTemplate;
+
     @Override
-    public R<PageDTO<UsageDetailVO>> queryUsageDetail(UsageDetailPageQuery pageQuery) {
+    public R<PageDTO<UsageDetailVO>> queryMyUsageDetailPage(UsageDetailPageQuery pageQuery) {
         SecurityUserDetails userDetails = SecurityUtils.getCurrentUser();
         if (userDetails == null) throw new BadRequestException("请先登录账号");
         Page<ModelUsageDetail> usageDetailPage = lambdaQuery()
@@ -72,6 +80,39 @@ public class ModelUsageDetailServiceImpl extends ServiceImpl<ModelUsageDetailMap
             vo.setContentTokens(vo.getCompletionTokens() - vo.getReasoningTokens());
             vos.add(vo);
         }
-        return R.ok(PageDTO.of((int) usageDetailPage.getTotal(), vos));
+        return R.ok(PageDTO.of(usageDetailPage.getTotal(), vos));
+    }
+
+    @Override
+    public void saveAndAdd(ModelUsageDetail usageDetail) {
+        LocalDate today = LocalDate.now();
+        String detailKey = USAGE_DETAIL_PREFIX + today;
+        Long userId = usageDetail.getUserId();
+        String modelName = usageDetail.getModelName();
+        String sessionId = usageDetail.getSessionId();
+        Integer promptTokens = usageDetail.getPromptTokens();
+        Integer completionTokens = usageDetail.getCompletionTokens();
+        Integer totalTokens = usageDetail.getTotalTokens();
+        Integer reasoningTokens = usageDetail.getReasoningTokens();
+        Integer cachedTokens = usageDetail.getCachedTokens();
+        String detail = userId + ","
+                + modelName + ","
+                + sessionId + ","
+                + promptTokens + ","
+                + completionTokens + ","
+                + totalTokens + ","
+                + reasoningTokens + ","
+                + cachedTokens + ","
+                + Instant.now().getEpochSecond();
+        // usage:detail:2026-04-27 "10086,deepseek-v4-pro,dha87dg8gdau34dhiasuddas,80,120,200,80,0,1777171526"
+        redisTemplate.opsForList().rightPush(detailKey, detail);
+        String hashFieldPrefix = userId + ":" + modelName;
+        // usage:sum:2026-04-27 10086:deepseek-v4-pro:p ↑80
+        String sumKey = USAGE_SUM_PREFIX + today;
+        redisTemplate.opsForHash().increment(sumKey, hashFieldPrefix + ":p", promptTokens);
+        redisTemplate.opsForHash().increment(sumKey, hashFieldPrefix + ":co", completionTokens);
+        redisTemplate.opsForHash().increment(sumKey, hashFieldPrefix + ":t", totalTokens);
+        redisTemplate.opsForHash().increment(sumKey, hashFieldPrefix + ":r", reasoningTokens);
+        redisTemplate.opsForHash().increment(sumKey, hashFieldPrefix + ":ca", cachedTokens);
     }
 }

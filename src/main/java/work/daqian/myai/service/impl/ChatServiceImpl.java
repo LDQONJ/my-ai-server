@@ -23,6 +23,7 @@ import work.daqian.myai.service.ChatMessageService;
 import work.daqian.myai.service.ChatService;
 import work.daqian.myai.service.ContextService;
 import work.daqian.myai.service.IModelService;
+import work.daqian.myai.util.ChatUtil;
 import work.daqian.myai.util.RedisUtil;
 import work.daqian.myai.util.SecurityAssert;
 import work.daqian.myai.util.SecurityUtils;
@@ -100,6 +101,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
             promptContext = PromptContext.builder()
                     .persona(contextService.getPersona(sessionId))
                     .rules(contextService.getRules(sessionId))
+                    .example(contextService.getExample(sessionId))
                     .summary(contextService.getSummary(sessionId))
                     .history(history)
                     .userInput(userMessage)
@@ -145,6 +147,22 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
                             history.add(new Message("assistant", cont));
                             CompletableFuture.runAsync(() -> {
                                 try {
+                                    if (provider.equals(Provider.OLLAMA)) {
+                                        int promptTokens = prompt.stream()
+                                                .mapToInt(message -> message.getContent().length())
+                                                .sum();
+                                        int reasoningTokens = thin.length();
+                                        int contentTokens = cont.length();
+                                        if (isEnglish(text)) {
+                                            promptTokens >>= 2;
+                                            reasoningTokens >>= 2;
+                                            contentTokens >>= 2;
+                                        }
+                                        int completionTokens = reasoningTokens + contentTokens;
+                                        int totalTokens = completionTokens + promptTokens;
+                                        ChatUtil.saveUsageDetail(userId, sessionId, modelName,
+                                                promptTokens, completionTokens, totalTokens, reasoningTokens, 0);
+                                    }
                                     messageService.saveUserMessage(sessionId, userId, text);
                                     messageService.saveAssistantMessage(sessionId, userId, modelName, cont, thin);
                                     contextService.saveHistory(sessionId, history);
@@ -167,5 +185,10 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
                         }
                     }
                 });
+    }
+
+    private boolean isEnglish(String s) {
+        char c = s.charAt(0);
+        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
     }
 }

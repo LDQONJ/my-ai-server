@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="work.daqian.myai.mapper.ModelUsageSumMapper">
+
+	<insert id="upsertBatch">
+		INSERT INTO model_usage_sum
+		(user_id, model_name, period_date,
+		prompt_tokens, completion_tokens, total_tokens,
+		reasoning_tokens, cached_tokens, cost, create_time, update_time)
+		VALUES
+		<foreach collection="usageSums" item="usageSum" separator=",">
+			(#{usageSum.userId}, #{usageSum.modelName}, #{usageSum.periodDate},
+			#{usageSum.promptTokens}, #{usageSum.completionTokens}, #{usageSum.totalTokens},
+			#{usageSum.reasoningTokens}, #{usageSum.cachedTokens}, #{usageSum.cost}, NOW(), NOW())
+		</foreach>
+		ON DUPLICATE KEY UPDATE
+		prompt_tokens = prompt_tokens + VALUES(prompt_tokens),
+		completion_tokens = completion_tokens + VALUES(completion_tokens),
+		total_tokens = total_tokens + VALUES(total_tokens),
+		reasoning_tokens = reasoning_tokens + VALUES(reasoning_tokens),
+		cached_tokens = cached_tokens + VALUES(cached_tokens),
+		cost = cost + VALUES(cost),
+		update_time = NOW()
+	</insert>
+</mapper>

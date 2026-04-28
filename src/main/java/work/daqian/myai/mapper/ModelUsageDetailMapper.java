@@ -1,7 +1,10 @@
 package work.daqian.myai.mapper;
 
+import org.apache.ibatis.annotations.Param;
 import work.daqian.myai.domain.po.ModelUsageDetail;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+
+import java.util.List;
 
 /**
  * <p>
@@ -13,4 +16,5 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
  */
 public interface ModelUsageDetailMapper extends BaseMapper<ModelUsageDetail> {
 
+    void insertBatch(@Param("usageDetails") List<ModelUsageDetail> usageDetails);
 }

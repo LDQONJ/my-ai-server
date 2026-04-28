@@ -50,7 +50,7 @@ public class ChatUtil implements ApplicationContextAware {
         usageDetail.setReasoningTokens(reasoningTokens);
         usageDetail.setCachedTokens(cachedTokens);
         IModelUsageDetailService usageDetailService = context.getBean(IModelUsageDetailService.class);
-        usageDetailService.save(usageDetail);
+        usageDetailService.saveAndAdd(usageDetail);
     }
 
     @Override

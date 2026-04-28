@@ -2,4 +2,16 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="work.daqian.myai.mapper.ModelUsageDetailMapper">
 
+	<insert id="insertBatch">
+		INSERT INTO model_usage_detail
+		(user_id, model_name, session_id,
+		prompt_tokens, completion_tokens, total_tokens,
+		reasoning_tokens, cached_tokens, cost, create_time)
+		VALUES
+		<foreach collection="usageDetails" item="usageDetail" separator=",">
+			(#{usageDetail.userId}, #{usageDetail.modelName}, #{usageDetail.sessionId},
+			#{usageDetail.promptTokens}, #{usageDetail.completionTokens}, #{usageDetail.totalTokens},
+			#{usageDetail.reasoningTokens}, #{usageDetail.cachedTokens}, #{usageDetail.cost}, #{usageDetail.createTime})
+		</foreach>
+	</insert>
 </mapper>

@@ -14,8 +14,6 @@ import work.daqian.myai.domain.dto.UsageDetailPageQuery;
 import work.daqian.myai.domain.vo.UsageDetailVO;
 import work.daqian.myai.service.IModelUsageDetailService;
 
-import java.util.List;
-
 /**
  * <p>
  * 记录用户对每个模型的单次调用使用量 前端控制器
@@ -33,9 +31,9 @@ public class ModelUsageDetailController {
 
     private final IModelUsageDetailService usageDetailService;
 
-    @GetMapping
+    @GetMapping("/page")
     @Operation(summary = "查询使用详情", description = "查询用户所有的模型调用记录")
-    public R<PageDTO<UsageDetailVO>> queryUsageDetail(UsageDetailPageQuery pageQuery) {
-        return usageDetailService.queryUsageDetail(pageQuery);
+    public R<PageDTO<UsageDetailVO>> queryMyUsageDetailPage(UsageDetailPageQuery pageQuery) {
+        return usageDetailService.queryMyUsageDetailPage(pageQuery);
     }
 }

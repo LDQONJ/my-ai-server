@@ -8,8 +8,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import work.daqian.myai.common.PageDTO;
 import work.daqian.myai.common.R;
 import work.daqian.myai.domain.dto.UserDTO;
+import work.daqian.myai.domain.dto.UserPageQuery;
+import work.daqian.myai.domain.vo.UserVO;
 import work.daqian.myai.service.IUserService;
 
 /**
@@ -62,5 +65,11 @@ public class UserController {
     @Operation(summary = "更新用户信息")
     public R<Void> update(@RequestBody UserDTO updateForm) {
         return userService.updateUserInfo(updateForm);
+    }
+
+    @GetMapping("/page")
+    @Operation(summary = "分页查询用户")
+    public R<PageDTO<UserVO>> queryUserPage(UserPageQuery pageQuery) {
+        return userService.queryUserPage(pageQuery);
     }
 }

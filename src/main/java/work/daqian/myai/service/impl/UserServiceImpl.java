@@ -1,5 +1,6 @@
 package work.daqian.myai.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,9 +9,11 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import work.daqian.myai.common.PageDTO;
 import work.daqian.myai.common.R;
 import work.daqian.myai.domain.dto.LoginUserDTO;
 import work.daqian.myai.domain.dto.UserDTO;
+import work.daqian.myai.domain.dto.UserPageQuery;
 import work.daqian.myai.domain.po.User;
 import work.daqian.myai.domain.vo.UserVO;
 import work.daqian.myai.exception.BadRequestException;
@@ -97,6 +100,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         updateById(user);
         redisTemplate.delete(USER_KEY_PREFIX + userId);
         return R.ok();
+    }
+
+    @Override
+    public R<PageDTO<UserVO>> queryUserPage(UserPageQuery pageQuery) {
+        Page<User> userPage = lambdaQuery()
+                .page(com.baomidou.mybatisplus.extension.plugins.pagination.PageDTO.of(pageQuery.getPageNo(), pageQuery.getPageSize()));
+        List<User> users = userPage.getRecords();
+        if (CollUtils.isEmpty(users)) return R.ok(PageDTO.empty());
+        List<UserVO> vos = BeanUtils.copyList(users, UserVO.class);
+        return R.ok(PageDTO.of(userPage.getTotal(), vos));
     }
 
     public String generateToken(LoginUserDTO detail) {

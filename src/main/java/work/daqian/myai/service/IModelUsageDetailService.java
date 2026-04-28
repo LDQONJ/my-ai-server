@@ -17,5 +17,7 @@ import work.daqian.myai.domain.vo.UsageDetailVO;
  */
 public interface IModelUsageDetailService extends IService<ModelUsageDetail> {
 
-    R<PageDTO<UsageDetailVO>> queryUsageDetail(UsageDetailPageQuery pageQuery);
+    R<PageDTO<UsageDetailVO>> queryMyUsageDetailPage(UsageDetailPageQuery pageQuery);
+
+    void saveAndAdd(ModelUsageDetail usageDetail);
 }

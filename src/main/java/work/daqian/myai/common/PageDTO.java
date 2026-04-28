@@ -10,9 +10,9 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PageDTO<T> {
-    private Integer total;
+    private Long total;
     private List<T> data;
-    public static <T> PageDTO<T> of(Integer total, List<T> data) {
+    public static <T> PageDTO<T> of(Long total, List<T> data) {
         return new PageDTO<>(total, data);
     }
 
