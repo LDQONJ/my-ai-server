@@ -13,6 +13,8 @@
 - 自动压缩聊天上下文并生成摘要
 - 全局/会话级提示词管理
 - 模型在线切换
+- 适配不同厂商的聊天模型 API
+- 工具调用
 
 ## 技术栈
 
@@ -23,7 +25,7 @@
 - MySQL
 - Redis
 - MongoDB
-- Knife4j (OpenAPI 3)
+- Knife4j
 
 ## 项目结构
 
@@ -37,6 +39,7 @@ src/main/java/work/daqian/myai
 ├─ config       # 配置类
 ├─ interceptor  # 鉴权拦截器
 ├─ repository   # MongoDB Repository
+├─ tool         # 模型可以调用的本地方法
 └─ util         # 工具类
 ```
 
@@ -49,7 +52,7 @@ src/main/java/work/daqian/myai
 - MySQL 8+
 - Redis 6+
 - MongoDB 6+
-- Ollama（并已拉取可用模型）
+- Ollama 本地模型或者阿里云、谷歌等厂商API
 
 ## 快速开始
 
