@@ -99,12 +99,15 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
             modelName = "qwen3.5:9b";
         }
         Message userMessage = new Message("user", text);
+        String currentIp = IpUtils.getCurrentIp();
+
         CompletableFuture<Map<String, String>> toolFuture = CompletableFuture.supplyAsync(() -> {
             // 判断是否需要调用工具
-            String decision = chatOnce(modelName, provider, List.of(
-                    new Message("system", promptBuilder.buildToolPrompt()),
+            String decision = chatOnce("qwen3.6-flash", Provider.ALIBABA, List.of(
+                    new Message("system", promptBuilder.buildToolPrompt(currentIp)),
                     userMessage
             ));
+            if (decision.equals("{}")) return Map.of();
             String toolResult = getToolResult(decision);
             return Map.of(
                     "toolResult", toolResult,

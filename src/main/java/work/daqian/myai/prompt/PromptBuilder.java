@@ -67,7 +67,7 @@ public class PromptBuilder {
         return s != null && !s.isEmpty();
     }
 
-    public String buildToolPrompt() {
+    public String buildToolPrompt(String ip) {
         List<ToolDefinition> tds = new ArrayList<>();
         tds.add(new ToolDefinition(
                 "getWeather",
@@ -87,7 +87,9 @@ public class PromptBuilder {
                 描述: 查询某个城市的天气
                 参数:
                 {
-                    "city": "城市名称"
+                    "city": "城市名称", /* 如北京、深圳，如果用户没说具体位置就填“当地” */
+                    "version" "v63", /* v63为当日天气，v9为七天天气 */
+                    "ip": "%s" /* city参数为“当地”时才添加ip参数，参数值就用这里的值 */
                 }
                 
                 当需要调用工具时，必须严格输出以下JSON格式:
@@ -102,7 +104,7 @@ public class PromptBuilder {
                 不要输出任何其他内容。
                 
                 不需要调用工具时，输出: {}
-                """;
+                """.formatted(ip);
     }
 
     public String buildSearchPrompt() {

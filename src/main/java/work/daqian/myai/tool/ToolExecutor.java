@@ -19,7 +19,9 @@ public class ToolExecutor {
         return switch (call.getTool()) {
             case "getWeather" -> {
                 String city = (String) call.getArguments().get("city");
-                yield weatherTool.getWeather(city);
+                String version = (String) call.getArguments().get("version");
+                String ip = (String) call.getArguments().get("ip");
+                yield weatherTool.getWeather(city, version, ip);
             }
             case "webSearch" -> {
                 String query = (String) call.getArguments().get("query");
