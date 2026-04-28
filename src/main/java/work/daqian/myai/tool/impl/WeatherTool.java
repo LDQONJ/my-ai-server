@@ -26,7 +26,7 @@ public class WeatherTool implements InitializingBean {
 
     public String getWeather(String city, String version, String ip) {
         if (city.equals("当地")) city = IpUtils.getCityFromIp(ip);
-        String uri = "/api?unescape=1&hours=1&version=" + version +
+        String uri = "/api?unescape=1&hours=no&index=no&version=" + version +
                 "&appid=" + appId + "&appsecret=" + appSecret +
                 "&city=" + city;
         return webClient.get()
