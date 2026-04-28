@@ -30,7 +30,7 @@ public interface ModelAdapter {
     /**
      * 构建请求体（JSON 对象，会直接传给 WebClient.bodyValue）
      */
-    Object buildRequest(String modelName, List<Message> prompt, boolean think);
+    Object buildRequest(String modelName, List<Message> prompt, boolean stream, boolean think);
 
     /**
      * 解析流式 chunk，返回给前端的事件流（同步操作，内部通过回调收集 token）

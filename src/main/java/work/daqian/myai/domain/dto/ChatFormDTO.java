@@ -14,5 +14,8 @@ public class ChatFormDTO {
     private Boolean think;
     @Schema(description = "是否开启提示词功能", example = "true")
     private Boolean prompt;
+    @Schema(description = "模型 Id", example = "1")
     private Long modelId;
+    @Schema(description = "是否开启联网搜索功能", example = "false")
+    private Boolean search;
 }

@@ -81,4 +81,8 @@ api:
     alibaba: ${ALIBABA_API_KEY}
     google: ${GOOGLE_API_KEY}
     gpt: ${GPT_API_KEY}
+    weather:
+      id: ${WEATHER_API_ID}
+      secret: ${WEATHER_API_SECRET}
+    search: ${SEARCH_API_KEY}
 

@@ -6,11 +6,13 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import work.daqian.myai.adapter.ModelAdapter;
 import work.daqian.myai.domain.dto.ChatFormDTO;
+import work.daqian.myai.domain.dto.ChatResponse;
 import work.daqian.myai.domain.dto.Message;
 import work.daqian.myai.domain.po.ChatSession;
 import work.daqian.myai.domain.po.Model;
@@ -23,10 +25,10 @@ import work.daqian.myai.service.ChatMessageService;
 import work.daqian.myai.service.ChatService;
 import work.daqian.myai.service.ContextService;
 import work.daqian.myai.service.IModelService;
-import work.daqian.myai.util.ChatUtil;
-import work.daqian.myai.util.RedisUtil;
-import work.daqian.myai.util.SecurityAssert;
-import work.daqian.myai.util.SecurityUtils;
+import work.daqian.myai.tool.ToolCall;
+import work.daqian.myai.tool.ToolCallParser;
+import work.daqian.myai.tool.ToolExecutor;
+import work.daqian.myai.util.*;
 
 import java.time.Duration;
 import java.util.List;
@@ -48,6 +50,8 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
     private final PromptBuilder promptBuilder;
     private final IModelService modelService;
     private final RedisUtil redisUtil;
+    private final ToolCallParser toolCallParser;
+    private final ToolExecutor toolExecutor;
     @Autowired
     @Qualifier("taskExecutor")
     private Executor taskExecutor;
@@ -69,6 +73,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
         Boolean enablePrompt = chatForm.getPrompt();
         String text = chatForm.getText();
         Long modelId = chatForm.getModelId();
+        Boolean search = chatForm.getSearch();
         String providerAndName = redisUtil.cacheEmptyIfNE(
                 "model:id:",
                 modelId,
@@ -116,6 +121,29 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
 
         List<Message> prompt = promptBuilder.build(promptContext);
 
+        // 判断是否需要调用工具
+        String decision = chatOnce(modelName, provider, List.of(
+                new Message("system", promptBuilder.buildToolPrompt()),
+                userMessage
+        ));
+        String toolResult = getToolResult(decision);
+        if (!StringUtils.isEmpty(toolResult)) {
+            prompt.add(new Message("assistant", decision));
+            prompt.add(new Message("tool", toolResult));
+        }
+        if (search) {
+            // 联网搜索
+            String searchDecision = chatOnce(modelName, provider, List.of(
+                    new Message("system", promptBuilder.buildSearchPrompt()),
+                    userMessage
+            ));
+            String searchResult = getToolResult(searchDecision);
+            if (!StringUtils.isEmpty(searchResult)) {
+                prompt.add(new Message("assistant", searchDecision));
+                prompt.add(new Message("tool", searchResult));
+            }
+        }
+
         StringBuilder contentBuilder = new StringBuilder();
         StringBuilder thinkingBuilder = new StringBuilder();
         AtomicBoolean isSaved = new AtomicBoolean(false);
@@ -124,7 +152,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
         ModelAdapter modelAdapter = adapterMap.get(provider);
         WebClient client = modelAdapter.buildWebClient();
         String uri = modelAdapter.getUri(modelName);
-        Object request = modelAdapter.buildRequest(modelName, prompt, think);
+        Object request = modelAdapter.buildRequest(modelName, prompt, true, think);
 
         return client.post()
                 .uri(uri)
@@ -187,8 +215,32 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
                 });
     }
 
+    @Nullable
+    private String getToolResult(String decision) {
+        ToolCall toolCall = toolCallParser.parse(decision);
+        String toolResult = null;
+        if (toolCall != null) {
+            toolResult = toolExecutor.execute(toolCall);
+        }
+        return toolResult;
+    }
+
     private boolean isEnglish(String s) {
         char c = s.charAt(0);
         return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+    }
+
+    private String chatOnce(String modelName, Provider provider, List<Message> messages) {
+        ModelAdapter modelAdapter = adapterMap.get(provider);
+        Object request = modelAdapter.buildRequest(modelName, messages, false, false);
+        ChatResponse response = modelAdapter
+                .buildWebClient().post()
+                .uri(modelAdapter.getUri(modelName))
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(ChatResponse.class)
+                .block();
+        Message message = response.getMessage();
+        return message.getContent();
     }
 }

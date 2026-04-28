@@ -51,7 +51,7 @@ public class AlibabaModelAdapter implements ModelAdapter {
     }
 
     @Override
-    public Object buildRequest(String modelName, List<Message> prompt, boolean think) {
+    public Object buildRequest(String modelName, List<Message> prompt, boolean stream, boolean think) {
         List<Map<String, String>> messages = prompt.stream()
                 .map(m -> Map.of("role", m.getRole(), "content", m.getContent()))
                 .toList();
@@ -59,7 +59,7 @@ public class AlibabaModelAdapter implements ModelAdapter {
                 "model", modelName,
                 "messages", messages,
                 "reasoning_effort", "high",
-                "stream", true,
+                "stream", stream,
                 "stream_options", Map.of("include_usage", true),
                 "enable_thinking", think
         );

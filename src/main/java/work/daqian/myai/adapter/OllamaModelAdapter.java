@@ -44,11 +44,11 @@ public class OllamaModelAdapter implements ModelAdapter {
     }
 
     @Override
-    public Object buildRequest(String modelName, List<Message> prompt, boolean think) {
+    public Object buildRequest(String modelName, List<Message> prompt, boolean stream, boolean think) {
         return Map.of(
                 "model", modelName,
                 "messages", prompt,
-                "stream", true,
+                "stream", stream,
                 "think", think
         );
     }

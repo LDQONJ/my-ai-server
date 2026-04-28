@@ -52,7 +52,7 @@ public class GoogleModelAdapter implements ModelAdapter {
     }
 
     @Override
-    public Object buildRequest(String modelName, List<Message> prompt, boolean think) {
+    public Object buildRequest(String modelName, List<Message> prompt, boolean stream, boolean think) {
         boolean lite = modelName.contains("lite");
         if (lite) think = false;
         List<Map<String, String>> systemPrompts = new ArrayList<>(5);
