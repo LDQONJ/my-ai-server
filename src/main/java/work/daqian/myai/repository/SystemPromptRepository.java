@@ -2,7 +2,7 @@ package work.daqian.myai.repository;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
 import work.daqian.myai.domain.po.SystemPrompt;
-import work.daqian.myai.prompt.PromptType;
+import work.daqian.myai.enums.PromptType;
 
 import java.util.Collection;
 

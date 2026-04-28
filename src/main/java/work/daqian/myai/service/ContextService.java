@@ -14,6 +14,8 @@ public interface ContextService {
 
     String getRules(String sessionId);
 
+    String getExample(String sessionId);
+
     String getSummary(String sessionId);
 
     void saveHistory(String sessionId, List<Message> messages);

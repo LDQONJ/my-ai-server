@@ -8,7 +8,7 @@ import org.springframework.data.convert.ReadingConverter;
 import org.springframework.data.convert.WritingConverter;
 import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
 import org.springframework.lang.Nullable;
-import work.daqian.myai.prompt.PromptType;
+import work.daqian.myai.enums.PromptType;
 
 import java.util.Arrays;
 
@@ -24,20 +24,20 @@ public class MongoConfig {
     }
 
     @ReadingConverter
-    static class PromptTypeReadConverter implements Converter<Integer, PromptType> {
+    static class PromptTypeReadConverter implements Converter<String, PromptType> {
         @Nullable
         @Override
-        public PromptType convert(@NonNull Integer value) {
-            return PromptType.fromValue(value);
+        public PromptType convert(@NonNull String name) {
+            return PromptType.fromName(name);
         }
     }
 
     @WritingConverter
-    static class PromptTypeWriteConverter implements Converter<PromptType, Integer> {
+    static class PromptTypeWriteConverter implements Converter<PromptType, String> {
         @Nullable
         @Override
-        public Integer convert(@NonNull PromptType promptType) {
-            return promptType.getValue();
+        public String convert(@NonNull PromptType promptType) {
+            return promptType.getName();
         }
     }
 }

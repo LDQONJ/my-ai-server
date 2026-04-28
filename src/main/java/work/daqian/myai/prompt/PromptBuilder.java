@@ -29,6 +29,13 @@ public class PromptBuilder {
                     """ + ctx.getRules()));
         }
 
+        // 对话示例
+        if (notEmpty(ctx.getExample())) {
+            result.add(system("""
+                    按以下示例进行回复：
+                    """ + ctx.getExample()));
+        }
+
         // 用户画像
         /* if (notEmpty(ctx.getMemory())) {
             result.add(system("""

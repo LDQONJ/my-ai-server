@@ -16,7 +16,7 @@ import work.daqian.myai.domain.po.SystemPrompt;
 import work.daqian.myai.domain.vo.ChatMessageVO;
 import work.daqian.myai.exception.BadRequestException;
 import work.daqian.myai.exception.BizIllegalException;
-import work.daqian.myai.prompt.PromptType;
+import work.daqian.myai.enums.PromptType;
 import work.daqian.myai.repository.SystemPromptRepository;
 import work.daqian.myai.service.ChatMessageService;
 import work.daqian.myai.service.ContextService;
@@ -190,6 +190,11 @@ public class ContextServiceImpl implements ContextService {
     }
 
     @Override
+    public String getExample(String sessionId) {
+        return getSystemPrompt(PromptType.EXAMPLE, sessionId);
+    }
+
+    @Override
     public String getSummary(String sessionId) {
         return getSystemPrompt(PromptType.SUMMARY, sessionId);
     }
@@ -197,13 +202,14 @@ public class ContextServiceImpl implements ContextService {
     private <T> void updatePrompt(T id, PromptDTO prompt) {
         doUpdatePrompt(id, prompt.getPersona(), PromptType.PERSONA);
         doUpdatePrompt(id, prompt.getRules(), PromptType.RULES);
+        doUpdatePrompt(id, prompt.getExampleStr(), PromptType.EXAMPLE);
     }
 
     private <T> void doUpdatePrompt(T id, String promptContent, PromptType type) {
         if (promptContent != null && !promptContent.isEmpty()) {
             SystemPrompt prompt = new SystemPrompt();
             prompt.setContent(promptContent);
-            PromptType globalType = PromptType.fromValue(type.getValue() - 2);
+            PromptType globalType = PromptType.fromName("global_" + type.getName());
             if (id instanceof Long) {
                 prompt.setUserId((Long) id);
                 prompt.setType(globalType);
@@ -223,6 +229,7 @@ public class ContextServiceImpl implements ContextService {
     private <T> PromptDTO querySystemPrompt(T id) {
         String personaContent = null;
         String rulesContent = null;
+        String exampleContent = null;
 
         if (id instanceof Long) {
             personaContent = redisUtil.cacheEmptyIfNE(PromptType.GLOBAL_PERSONA.getKeyPrefix(), (Long) id, Duration.ofHours(1), (uid) -> {
@@ -233,6 +240,10 @@ public class ContextServiceImpl implements ContextService {
                 SystemPrompt globalRules = promptRepository.findSystemPromptByUserIdAndType(uid, PromptType.GLOBAL_RULES);
                 return globalRules != null ? globalRules.getContent() : "";
             });
+            exampleContent = redisUtil.cacheEmptyIfNE(PromptType.GLOBAL_EXAMPLE.getKeyPrefix(), (Long) id, Duration.ofHours(1), (uid) -> {
+                SystemPrompt globalExample = promptRepository.findSystemPromptByUserIdAndType(uid, PromptType.GLOBAL_EXAMPLE);
+                return globalExample != null ? globalExample.getContent() : "";
+            });
         } else if (id instanceof String) {
             personaContent = redisUtil.cacheEmptyIfNE(PromptType.PERSONA.getKeyPrefix(), (String) id, Duration.ofHours(1), (sid) -> {
                 SystemPrompt persona = promptRepository.findSystemPromptBySessionIdAndType(sid, PromptType.PERSONA);
@@ -242,11 +253,16 @@ public class ContextServiceImpl implements ContextService {
                 SystemPrompt rules = promptRepository.findSystemPromptBySessionIdAndType(sid, PromptType.RULES);
                 return rules != null ? rules.getContent() : "";
             });
+            exampleContent = redisUtil.cacheEmptyIfNE(PromptType.EXAMPLE.getKeyPrefix(), (String) id, Duration.ofHours(1), (sid) -> {
+                SystemPrompt example = promptRepository.findSystemPromptBySessionIdAndType(sid, PromptType.EXAMPLE);
+                return example != null ? example.getContent() : "";
+            });
         }
 
         PromptDTO promptDTO = new PromptDTO();
         promptDTO.setPersona(personaContent);
         promptDTO.setRules(rulesContent);
+        promptDTO.setExampleFromStr(exampleContent);
         return promptDTO;
     }
 
@@ -258,7 +274,7 @@ public class ContextServiceImpl implements ContextService {
         if (!promptContent.isEmpty() || promptType.equals(PromptType.SUMMARY)) return promptContent;
         Long userId = SecurityUtils.getCurrentUserId();
         if (userId == null) return "";
-        PromptType globalType = PromptType.fromValue(promptType.getValue() - 2);
+        PromptType globalType = PromptType.fromName("global_" + promptType.getName());
         promptContent = redisUtil.cacheEmptyIfNE(globalType.getKeyPrefix(), userId, Duration.ofHours(1), (uid) -> {
             SystemPrompt prompt = promptRepository.findSystemPromptByUserIdAndType(uid, globalType);
             return prompt != null ? prompt.getContent() : "";

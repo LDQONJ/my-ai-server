@@ -22,6 +22,9 @@ public class PromptContext {
     // 规则
     private String rules;
 
+    // 示例
+    private String example;
+
     // 用户记忆（暂不实现）
     // private String memory;
 
