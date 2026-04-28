@@ -161,4 +161,9 @@ public class GoogleModelAdapter implements ModelAdapter {
             return Flux.empty();
         }
     }
+
+    @Override
+    public Class<? extends NonStreamResponse> getNonStreamResponseClass() {
+        return null;
+    }
 }

@@ -2,6 +2,7 @@ package work.daqian.myai.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
@@ -80,6 +81,21 @@ public class OllamaModelAdapter implements ModelAdapter {
             return Flux.fromIterable(result);
         } catch (Exception e) {
             return Flux.empty();
+        }
+    }
+
+    @Override
+    public Class<? extends NonStreamResponse> getNonStreamResponseClass() {
+        return ChatResponse.class;
+    }
+
+    @Data
+    static class ChatResponse implements NonStreamResponse {
+        private Message message;
+
+        @Override
+        public String getContent() {
+            return message.getContent();
         }
     }
 }

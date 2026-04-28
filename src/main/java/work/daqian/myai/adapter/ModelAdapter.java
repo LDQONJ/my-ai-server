@@ -40,4 +40,5 @@ public interface ModelAdapter {
                             StringBuilder thinkingBuilder,
                             Long userId, String sessionId);
 
+    Class<? extends NonStreamResponse> getNonStreamResponseClass();
 }

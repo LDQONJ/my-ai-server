@@ -11,8 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import work.daqian.myai.adapter.ModelAdapter;
+import work.daqian.myai.adapter.NonStreamResponse;
 import work.daqian.myai.domain.dto.ChatFormDTO;
-import work.daqian.myai.domain.dto.ChatResponse;
 import work.daqian.myai.domain.dto.Message;
 import work.daqian.myai.domain.po.ChatSession;
 import work.daqian.myai.domain.po.Model;
@@ -34,6 +34,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -97,10 +98,21 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
             provider = Provider.OLLAMA;
             modelName = "qwen3.5:9b";
         }
+        Message userMessage = new Message("user", text);
+        CompletableFuture<Map<String, String>> toolFuture = CompletableFuture.supplyAsync(() -> {
+            // 判断是否需要调用工具
+            String decision = chatOnce(modelName, provider, List.of(
+                    new Message("system", promptBuilder.buildToolPrompt()),
+                    userMessage
+            ));
+            String toolResult = getToolResult(decision);
+            return Map.of(
+                    "toolResult", toolResult,
+                    "decision", decision
+            );
+        }, taskExecutor);
 
         List<Message> history = contextService.getHistory(sessionId, false);
-        Message userMessage = new Message("user", text);
-
         PromptContext promptContext;
         if (enablePrompt) {
             promptContext = PromptContext.builder()
@@ -121,15 +133,16 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
 
         List<Message> prompt = promptBuilder.build(promptContext);
 
-        // 判断是否需要调用工具
-        String decision = chatOnce(modelName, provider, List.of(
-                new Message("system", promptBuilder.buildToolPrompt()),
-                userMessage
-        ));
-        String toolResult = getToolResult(decision);
-        if (!StringUtils.isEmpty(toolResult)) {
-            prompt.add(new Message("assistant", decision));
-            prompt.add(new Message("tool", toolResult));
+        try {
+            Map<String, String> map = toolFuture.get();
+            String toolResult = map.get("toolResult");
+            if (!StringUtils.isEmpty(toolResult)) {
+                String decision = map.get("decision");
+                prompt.add(new Message("assistant", decision));
+                prompt.add(new Message("tool", toolResult));
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
         }
         if (search) {
             // 联网搜索
@@ -233,14 +246,14 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
     private String chatOnce(String modelName, Provider provider, List<Message> messages) {
         ModelAdapter modelAdapter = adapterMap.get(provider);
         Object request = modelAdapter.buildRequest(modelName, messages, false, false);
-        ChatResponse response = modelAdapter
+        Class<? extends NonStreamResponse> clazz = modelAdapter.getNonStreamResponseClass();
+        NonStreamResponse response = modelAdapter
                 .buildWebClient().post()
                 .uri(modelAdapter.getUri(modelName))
                 .bodyValue(request)
                 .retrieve()
-                .bodyToMono(ChatResponse.class)
+                .bodyToMono(clazz)
                 .block();
-        Message message = response.getMessage();
-        return message.getContent();
+        return response.getContent();
     }
 }

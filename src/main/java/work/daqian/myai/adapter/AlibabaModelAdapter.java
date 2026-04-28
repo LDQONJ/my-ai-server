@@ -2,6 +2,7 @@ package work.daqian.myai.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,7 @@ import work.daqian.myai.domain.dto.Message;
 import work.daqian.myai.enums.Provider;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -55,14 +57,15 @@ public class AlibabaModelAdapter implements ModelAdapter {
         List<Map<String, String>> messages = prompt.stream()
                 .map(m -> Map.of("role", m.getRole(), "content", m.getContent()))
                 .toList();
-        return Map.of(
-                "model", modelName,
-                "messages", messages,
-                "reasoning_effort", "high",
-                "stream", stream,
-                "stream_options", Map.of("include_usage", true),
-                "enable_thinking", think
-        );
+        Map<String, Object> requestMap = new HashMap<>(10);
+        requestMap.put("model", modelName);
+        requestMap.put("messages", messages);
+        requestMap.put("reasoning_effort", "high");
+        requestMap.put("stream", stream);
+        if (stream)
+            requestMap.put("stream_options", Map.of("include_usage", true));
+        requestMap.put("enable_thinking", think);
+        return requestMap;
     }
 
     @Override
@@ -123,6 +126,31 @@ public class AlibabaModelAdapter implements ModelAdapter {
         } catch (Exception e) {
             log.warn("解析阿里云 Api chunk 失败: {}", e.getMessage());
             return Flux.empty();
+        }
+    }
+
+    @Override
+    public Class<? extends NonStreamResponse> getNonStreamResponseClass() {
+        return AlibabaResponse.class;
+    }
+
+    @Data
+    static class AlibabaResponse implements NonStreamResponse {
+        private List<Choice> choices;
+
+        @Override
+        public String getContent() {
+            return choices.get(0).getMessage().getContent();
+        }
+
+        @Data
+        public static class Choice {
+            private Message message;
+        }
+
+        @Data
+        public static class Message {
+            private String content;
         }
     }
 }

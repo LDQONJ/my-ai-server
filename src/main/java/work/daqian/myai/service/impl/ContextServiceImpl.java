@@ -7,9 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import work.daqian.myai.adapter.NonStreamResponse;
 import work.daqian.myai.adapter.OllamaModelAdapter;
 import work.daqian.myai.common.R;
-import work.daqian.myai.domain.dto.ChatResponse;
 import work.daqian.myai.domain.dto.Message;
 import work.daqian.myai.domain.dto.PromptDTO;
 import work.daqian.myai.domain.po.SystemPrompt;
@@ -138,12 +138,18 @@ public class ContextServiceImpl implements ContextService {
                 "think", false
         );
         try {
-            ChatResponse response = ollamaModelAdapter.buildWebClient().post().uri("/api/chat").contentType(MediaType.APPLICATION_JSON).bodyValue(request).retrieve().bodyToMono(ChatResponse.class).block();
-            Message message = response.getMessage();
+            Class<? extends NonStreamResponse> responseClass = ollamaModelAdapter.getNonStreamResponseClass();
+            NonStreamResponse response = ollamaModelAdapter.buildWebClient().post()
+                    .uri("/api/chat")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(responseClass)
+                    .block();
             SystemPrompt systemPrompt = new SystemPrompt();
             systemPrompt.setSessionId(sessionId);
             systemPrompt.setType(PromptType.SUMMARY);
-            systemPrompt.setContent(message.getContent());
+            systemPrompt.setContent(response.getContent());
             promptService.saveOrUpdate(systemPrompt);
             // 裁剪redis中的历史记录
             history = history.subList(MAX_CONTEXT / 2, history.size() - 1);
