@@ -2,6 +2,7 @@ package work.daqian.myai.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -165,5 +166,31 @@ public class GoogleModelAdapter implements ModelAdapter {
     @Override
     public Class<? extends NonStreamResponse> getNonStreamResponseClass() {
         return null;
+    }
+
+    @Data
+    static class GoogleResponse implements NonStreamResponse {
+
+        private List<Candidate> candidates;
+
+        @Data
+        static class Candidate {
+            private Content content;
+        }
+
+        @Data
+        static class Content {
+            private List<Part> parts;
+        }
+
+        @Data
+        static class Part {
+            private String text;
+        }
+
+        @Override
+        public String getContent() {
+            return candidates.get(0).getContent().getParts().get(0).getText();
+        }
     }
 }
