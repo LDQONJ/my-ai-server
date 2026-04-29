@@ -13,7 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
-import work.daqian.myai.adapter.OllamaModelAdapter;
+import work.daqian.myai.adapter.AlibabaModelAdapter;
 import work.daqian.myai.common.R;
 import work.daqian.myai.domain.dto.Message;
 import work.daqian.myai.domain.po.ChatSession;
@@ -37,7 +37,6 @@ import work.daqian.myai.util.SecurityUtils;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -75,7 +74,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
 
     private final PromptBuilder promptBuilder;
 
-    private final OllamaModelAdapter ollamaModelAdapter;
+    private final AlibabaModelAdapter alibabaModelAdapter;
 
     @Autowired
     @Qualifier("taskExecutor")
@@ -173,17 +172,15 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                 .userInput(new Message("user", "为以上对话生成标题，只需回复标题内容"))
                 .build();
         List<Message> prompt = promptBuilder.build(promptContext);
-        String currentModel = modelService.getCurrentModel().get();
-        Object request = Map.of(
-                // deepseek-r1 无法关闭思考模式，导致生成标题的过程属于思考内容，往往不会服从指令，需要使用其他轻量模型生成标题
-                "model", currentModel.startsWith("deepseek") ? "qwen3.5:9b" : currentModel,
-                "messages", prompt,
-                "stream", true,
-                "think", false
+        Object request = alibabaModelAdapter.buildRequest(
+                "qwen3.6-flash",
+                prompt,
+                true,
+                false
         );
         StringBuilder contentBuilder = new StringBuilder();
-        return ollamaModelAdapter.buildWebClient().post()
-                .uri("/api/chat")
+        return alibabaModelAdapter.buildWebClient().post()
+                .uri(alibabaModelAdapter.getUri("qwen3.6-flash"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .retrieve()
@@ -215,8 +212,8 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                 line = line.trim();
                 if (line.isEmpty()) continue;
                 JsonNode node = mapper.readTree(line);
-                JsonNode message = node.path("message");
-                String content = message.path("content").asText();
+                JsonNode choices = node.path("choices");
+                String content = choices.get(0).path("delta").path("content").asText();
                 if (content != null && !content.isEmpty()) {
                     content.codePoints().forEach(cp -> result.add(ChatUtil.toJson("content", new String(Character.toChars(cp)))));
                     contentBuilder.append(content);

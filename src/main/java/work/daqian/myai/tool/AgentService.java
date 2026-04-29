@@ -9,6 +9,7 @@ import work.daqian.myai.adapter.NonStreamResponse;
 import work.daqian.myai.domain.dto.Message;
 import work.daqian.myai.enums.Provider;
 import work.daqian.myai.prompt.PromptBuilder;
+import work.daqian.myai.websocket.WebSocketService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +30,7 @@ public class AgentService implements InitializingBean {
     private final List<ModelAdapter> adapters;
 
     private final List<Tool> tools;
+    private final WebSocketService webSocketService;
 
     private Map<Provider, ModelAdapter> adapterMap;
 
@@ -45,7 +47,7 @@ public class AgentService implements InitializingBean {
 
     private static final int MAX_STEPS = 5;
 
-    public List<Message> runAgent(String userInput, String ip) {
+    public List<Message> runAgent(String wsId, String userInput, String ip) {
 
         List<Message> messages = new ArrayList<>();
 
@@ -68,14 +70,13 @@ public class AgentService implements InitializingBean {
             // 模型决策（非流式）
             String decision = chatOnce("qwen3.6-flash", Provider.ALIBABA, messages);
 
-            if (decision == null || decision.equals("{}"))
-                return result;
+            if (decision == null || decision.equals("{}")) break;
 
             ToolCall call = toolCallParser.parse(decision);
 
             // 执行工具
-            String toolResult = toolExecutor.execute(call);
-            if (toolResult == null) return result;
+            String toolResult = toolExecutor.execute(call, wsId);
+            if (toolResult == null) break;
 
             // 写入上下文
             messages.add(new Message("assistant", decision));
@@ -86,7 +87,11 @@ public class AgentService implements InitializingBean {
 
             // log.info("本次 Agent 循环结果: {}", result);
         }
-
+        if (result.isEmpty()) {
+            webSocketService.sendMessageToClient(wsId, "未调用工具");
+        } else {
+            webSocketService.sendMessageToClient(wsId, "已调用 " + (result.size() >> 1) + " 个工具");
+        }
         return result;
     }
 

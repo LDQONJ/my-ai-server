@@ -18,4 +18,6 @@ public class ChatFormDTO {
     private Long modelId;
     @Schema(description = "是否开启联网搜索功能", example = "false")
     private Boolean search;
+    @Schema(description = "WebSocketSessionId，用于接收执行状态通知", example = "7dagasdy8hduag")
+    private String wsId;
 }

@@ -30,6 +30,7 @@ import work.daqian.myai.tool.ToolCall;
 import work.daqian.myai.tool.ToolCallParser;
 import work.daqian.myai.tool.ToolExecutor;
 import work.daqian.myai.util.*;
+import work.daqian.myai.websocket.WebSocketService;
 
 import java.time.Duration;
 import java.util.List;
@@ -56,6 +57,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
     private final ToolExecutor toolExecutor;
     @Lazy
     private final AgentService agentService;
+    private final WebSocketService webSocketService;
     @Autowired
     @Qualifier("taskExecutor")
     private Executor taskExecutor;
@@ -74,7 +76,9 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
         String text = chatForm.getText();
         // 提前异步调用工具链，减少阻塞时间
         String currentIp = IpUtils.getCurrentIp();
-        CompletableFuture<List<Message>> agentFuture = CompletableFuture.supplyAsync(() -> agentService.runAgent(text, currentIp), taskExecutor);
+        String wsId = chatForm.getWsId();
+        webSocketService.sendMessageToClient(wsId, "判断是否需要调用工具...");
+        CompletableFuture<List<Message>> agentFuture = CompletableFuture.supplyAsync(() -> agentService.runAgent(wsId, text, currentIp), taskExecutor);
         Long userId = SecurityUtils.getCurrentUserId();
         String sessionId = chatForm.getSessionId();
         Boolean think = chatForm.getThink();
@@ -143,6 +147,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
                 prompt.add(new Message("tool", searchResult));
             }
         }
+        webSocketService.sendMessageToClient(wsId, "开始回复...");
 
         StringBuilder contentBuilder = new StringBuilder();
         StringBuilder thinkingBuilder = new StringBuilder();
@@ -220,7 +225,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
         ToolCall toolCall = toolCallParser.parse(decision);
         String toolResult = null;
         if (toolCall != null) {
-            toolResult = toolExecutor.execute(toolCall);
+            toolResult = toolExecutor.execute(toolCall, "");
         }
         return toolResult;
     }
@@ -229,6 +234,4 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
         char c = s.charAt(0);
         return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
     }
-
-
 }
