@@ -77,7 +77,7 @@ public class WeatherTool implements Tool,InitializingBean {
                 "获取指定城市的当日天气或七日天气",
                 """
                         {
-                            "city": "城市名", /* 如北京、上海、深圳，不带“市”、“县”等后缀 */
+                            "city": "城市名或区县名", /* 如北京、上海、深圳，不带“市”、“县”等后缀 */
                             "version": "版本号" /* “v9” 或 “v63”，v9是查询七日天气，v63是查询当日天气 */
                         }
                         """
