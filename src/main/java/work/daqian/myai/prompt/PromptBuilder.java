@@ -94,20 +94,11 @@ public class PromptBuilder {
         return sb.toString();
     }
 
-    public String buildSearchPrompt() {
-        ToolDefinition td = new ToolDefinition(
-                "webSearch",
-                "搜索互联网获取最新信息",
-                """
-                        {
-                            "query": "要搜索的内容"
-                        }
-                        """
-        );
+    public String buildSearchPrompt(ToolDefinition td) {
         return """
-                你可以使用工具来回答问题。
+                你可以使用搜索工具来获取资料，根据用户消息推断应该搜索的内容。
                 
-                可用工具:
+                搜索工具:
                 
                 工具名: %s
                 描述: %s

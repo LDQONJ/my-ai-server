@@ -14,7 +14,6 @@ import work.daqian.myai.websocket.WebSocketService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -42,7 +41,7 @@ public class AgentService implements InitializingBean {
     public void afterPropertiesSet() {
         adapterMap = adapters.stream()
                 .collect(Collectors.toMap(ModelAdapter::getProvider, Function.identity()));
-        TDS = tools.stream().map(Tool::getToolDefinition).filter(Objects::nonNull).collect(Collectors.toList());
+        TDS = tools.stream().map(Tool::getToolDefinition).filter((td) -> !td.getName().equals("webSearch")).collect(Collectors.toList());
     }
 
     private static final int MAX_STEPS = 5;

@@ -25,10 +25,8 @@ import work.daqian.myai.service.ChatMessageService;
 import work.daqian.myai.service.ChatService;
 import work.daqian.myai.service.ContextService;
 import work.daqian.myai.service.IModelService;
-import work.daqian.myai.tool.AgentService;
-import work.daqian.myai.tool.ToolCall;
-import work.daqian.myai.tool.ToolCallParser;
-import work.daqian.myai.tool.ToolExecutor;
+import work.daqian.myai.tool.*;
+import work.daqian.myai.tool.impl.WebSearchTool;
 import work.daqian.myai.util.*;
 import work.daqian.myai.websocket.WebSocketService;
 
@@ -58,6 +56,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
     @Lazy
     private final AgentService agentService;
     private final WebSocketService webSocketService;
+    private final WebSearchTool webSearchTool;
     @Autowired
     @Qualifier("taskExecutor")
     private Executor taskExecutor;
@@ -138,7 +137,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
         if (search) {
             // 联网搜索
             String searchDecision = agentService.chatOnce(modelName, provider, List.of(
-                    new Message("system", promptBuilder.buildSearchPrompt()),
+                    new Message("system", promptBuilder.buildSearchPrompt(webSearchTool.getToolDefinition())),
                     userMessage
             ));
             String searchResult = getToolResult(searchDecision);

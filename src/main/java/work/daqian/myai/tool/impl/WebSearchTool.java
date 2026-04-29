@@ -63,7 +63,15 @@ public class WebSearchTool implements Tool,InitializingBean {
 
     @Override
     public ToolDefinition getToolDefinition() {
-        return null;
+        return new ToolDefinition(
+                "webSearch",
+                "搜索互联网获取最新信息",
+                """
+                        {
+                            "query": "要搜索的内容"
+                        }
+                        """
+        );
     }
 
     @Data
