@@ -1,6 +1,6 @@
 # myai - AI 聊天应用后端服务器
 
-一个基于 Spring Boot 3 + Spring AI + Ollama 的 AI 聊天后端服务，支持用户管理、对话管理、提示词管理、模型切换、SSE 流式输出等功能。
+一个基于 Spring Boot 3 + Spring AI + Ollama 的轻量级、多功能 AI 聊天应用后端服务，支持用户管理、对话管理、提示词管理、模型切换、SSE 流式输出等功能。
 新增对阿里云模型、谷歌模型的适配。新增函数调用功能。
 
 前端项目：[my-ai-chat](https://github.com/LDQONJ/my-ai-chat)
@@ -14,7 +14,7 @@
 - 全局/会话级提示词管理
 - 模型在线切换
 - 适配不同厂商的聊天模型 API
-- 工具调用
+- 工具链式调用
 
 ## 技术栈
 
