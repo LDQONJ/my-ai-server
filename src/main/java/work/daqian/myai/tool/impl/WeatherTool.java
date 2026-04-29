@@ -55,7 +55,6 @@ public class WeatherTool implements Tool,InitializingBean {
                     all = all.addDay(day);
                 }
                 json = mapper.writeValueAsString(all);
-                System.out.println(json);
             }
         } catch (Exception e) {
             log.error("转换七日天气失败");
