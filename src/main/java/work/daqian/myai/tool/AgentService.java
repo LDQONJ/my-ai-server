@@ -41,7 +41,7 @@ public class AgentService implements InitializingBean {
     public void afterPropertiesSet() {
         adapterMap = adapters.stream()
                 .collect(Collectors.toMap(ModelAdapter::getProvider, Function.identity()));
-        TDS = tools.stream().map(Tool::getToolDefinition).filter((td) -> !td.getName().equals("webSearch")).collect(Collectors.toList());
+        TDS = tools.stream().map(Tool::getToolDefinition).filter((td) -> td != null && !td.getName().equals("webSearch")).collect(Collectors.toList());
     }
 
     private static final int MAX_STEPS = 5;
