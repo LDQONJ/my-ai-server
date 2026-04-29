@@ -1,5 +1,7 @@
 package work.daqian.myai.tool.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,12 +11,16 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-import work.daqian.myai.util.IpUtils;
+import work.daqian.myai.tool.Tool;
+import work.daqian.myai.tool.ToolDefinition;
+
+import java.lang.reflect.Field;
+import java.util.List;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class WeatherTool implements InitializingBean {
+public class WeatherTool implements Tool,InitializingBean {
 
     private WebClient webClient;
 
@@ -24,16 +30,37 @@ public class WeatherTool implements InitializingBean {
     @Value("${api.key.weather.secret}")
     private String appSecret;
 
-    public String getWeather(String city, String version, String ip) {
-        if (city.equals("当地")) city = IpUtils.getCityFromIp(ip);
+    private final ObjectMapper mapper;
+
+    public String getWeather(String city, String version) {
         String uri = "/api?unescape=1&hours=no&index=no&version=" + version +
                 "&appid=" + appId + "&appsecret=" + appSecret +
                 "&city=" + city;
-        return webClient.get()
+        String json = webClient.get()
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
+        try {
+            JsonNode node = mapper.readTree(json);
+            JsonNode data = node.path("data");
+            WeatherResponse weatherResponse = null;
+            if (data != null && !data.isEmpty()) {
+                // 使用自定义类获取需要的字段，并把每一天的具体数据拼接到一起，减少重复的字段名称，进而减少token消耗
+                weatherResponse = mapper.convertValue(node, WeatherResponse.class);
+                List<WeatherResponse.EachDay> days = weatherResponse.getData();
+                WeatherResponse.EachDay all = days.get(0);
+                for (int i = 1; i < days.size(); i++) {
+                    WeatherResponse.EachDay day = days.get(i);
+                    all = all.addDay(day);
+                }
+                json = mapper.writeValueAsString(all);
+                System.out.println(json);
+            }
+        } catch (Exception e) {
+            log.error("转换七日天气失败");
+        }
+        return json;
     }
 
     @Override
@@ -42,6 +69,20 @@ public class WeatherTool implements InitializingBean {
                 .baseUrl("http://pddfps.tianqiapi.com")
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
+    }
+
+    @Override
+    public ToolDefinition getToolDefinition() {
+        return new ToolDefinition(
+                "getWeather",
+                "获取指定城市的当日天气或七日天气",
+                """
+                        {
+                            "city": "城市名", /* 如北京、上海、深圳，不带“市”、“县”等后缀 */
+                            "version": "版本号" /* “v9” 或 “v63”，v9是查询七日天气，v63是查询当日天气 */
+                        }
+                        """
+        );
     }
 
     @Data
@@ -80,5 +121,49 @@ public class WeatherTool implements InitializingBean {
         private String callback;
         private String vue;
         private String unescape;
+    }
+
+    @Data
+    static class WeatherResponse {
+        List<EachDay> data;
+
+        @Data
+        static class EachDay {
+            private String day = "无";
+            private String date = "无";
+            private String week = "无";
+            private String wea = "无";
+            private String wea_day = "无";
+            private String wea_night = "无";
+            private String tem = "无";
+            private String tem1 = "无";
+            private String tem2 = "无";
+            private String humidity = "无";
+            private String win_speed = "无";
+            private String sunrise = "无";
+            private String sunset = "无";
+            private String air = "无";
+            private String air_level = "无";
+            private String uvIndex = "无";
+            private String uvDescription = "无";
+
+            public EachDay addDay(EachDay day) {
+                Field[] fields = EachDay.class.getDeclaredFields();
+                try {
+                    if (fields[0].get(this) != null) {
+                        for (Field field : fields) {
+                            field.setAccessible(true);
+                            Object o = field.get(this);
+                            String allDayValue = o.toString();
+                            String nextDayValue = field.get(day).toString();
+                            field.set(this, allDayValue + "," + nextDayValue);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("拼接失败");
+                }
+                return this;
+            }
+        }
     }
 }

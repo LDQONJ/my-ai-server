@@ -2,6 +2,7 @@ package work.daqian.myai.tool;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import work.daqian.myai.tool.impl.CityTool;
 import work.daqian.myai.tool.impl.WeatherTool;
 import work.daqian.myai.tool.impl.WebSearchTool;
 
@@ -13,15 +14,20 @@ public class ToolExecutor {
 
     private final WebSearchTool webSearchTool;
 
+    private final CityTool cityTool;
+
     public String execute(ToolCall call) {
         if (call == null || call.getTool() == null) return null;
 
         return switch (call.getTool()) {
+            case "getCity" -> {
+                String ip = (String) call.getArguments().get("ip");
+                yield cityTool.getCity(ip);
+            }
             case "getWeather" -> {
                 String city = (String) call.getArguments().get("city");
                 String version = (String) call.getArguments().get("version");
-                String ip = (String) call.getArguments().get("ip");
-                yield weatherTool.getWeather(city, version, ip);
+                yield weatherTool.getWeather(city, version);
             }
             case "webSearch" -> {
                 String query = (String) call.getArguments().get("query");

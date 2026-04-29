@@ -10,12 +10,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import work.daqian.myai.tool.Tool;
+import work.daqian.myai.tool.ToolDefinition;
 
 import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
-public class WebSearchTool implements InitializingBean {
+public class WebSearchTool implements Tool,InitializingBean {
 
     private WebClient webClient;
 
@@ -57,6 +59,11 @@ public class WebSearchTool implements InitializingBean {
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader(HttpHeaders.AUTHORIZATION, "Bear " + apiKey)
                 .build();
+    }
+
+    @Override
+    public ToolDefinition getToolDefinition() {
+        return null;
     }
 
     @Data

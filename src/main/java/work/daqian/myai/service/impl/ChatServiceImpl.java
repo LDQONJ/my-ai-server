@@ -5,13 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.MediaType;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import work.daqian.myai.adapter.ModelAdapter;
-import work.daqian.myai.adapter.NonStreamResponse;
 import work.daqian.myai.domain.dto.ChatFormDTO;
 import work.daqian.myai.domain.dto.Message;
 import work.daqian.myai.domain.po.ChatSession;
@@ -25,6 +25,7 @@ import work.daqian.myai.service.ChatMessageService;
 import work.daqian.myai.service.ChatService;
 import work.daqian.myai.service.ContextService;
 import work.daqian.myai.service.IModelService;
+import work.daqian.myai.tool.AgentService;
 import work.daqian.myai.tool.ToolCall;
 import work.daqian.myai.tool.ToolCallParser;
 import work.daqian.myai.tool.ToolExecutor;
@@ -53,6 +54,8 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
     private final RedisUtil redisUtil;
     private final ToolCallParser toolCallParser;
     private final ToolExecutor toolExecutor;
+    @Lazy
+    private final AgentService agentService;
     @Autowired
     @Qualifier("taskExecutor")
     private Executor taskExecutor;
@@ -68,11 +71,14 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
 
     @Override
     public Flux<String> streamChat(ChatFormDTO chatForm) {
+        String text = chatForm.getText();
+        // 提前异步调用工具链，减少阻塞时间
+        String currentIp = IpUtils.getCurrentIp();
+        CompletableFuture<List<Message>> agentFuture = CompletableFuture.supplyAsync(() -> agentService.runAgent(text, currentIp), taskExecutor);
         Long userId = SecurityUtils.getCurrentUserId();
         String sessionId = chatForm.getSessionId();
         Boolean think = chatForm.getThink();
         Boolean enablePrompt = chatForm.getPrompt();
-        String text = chatForm.getText();
         Long modelId = chatForm.getModelId();
         Boolean search = chatForm.getSearch();
         String providerAndName = redisUtil.cacheEmptyIfNE(
@@ -99,21 +105,6 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
             modelName = "qwen3.5:9b";
         }
         Message userMessage = new Message("user", text);
-        String currentIp = IpUtils.getCurrentIp();
-
-        CompletableFuture<Map<String, String>> toolFuture = CompletableFuture.supplyAsync(() -> {
-            // 判断是否需要调用工具
-            String decision = chatOnce("qwen3.6-flash", Provider.ALIBABA, List.of(
-                    new Message("system", promptBuilder.buildToolPrompt(currentIp)),
-                    userMessage
-            ));
-            if (decision.equals("{}")) return Map.of();
-            String toolResult = getToolResult(decision);
-            return Map.of(
-                    "toolResult", toolResult,
-                    "decision", decision
-            );
-        }, taskExecutor);
 
         List<Message> history = contextService.getHistory(sessionId, false);
         PromptContext promptContext;
@@ -135,21 +126,14 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
         }
 
         List<Message> prompt = promptBuilder.build(promptContext);
-
         try {
-            Map<String, String> map = toolFuture.get();
-            String toolResult = map.get("toolResult");
-            if (!StringUtils.isEmpty(toolResult)) {
-                String decision = map.get("decision");
-                prompt.add(new Message("assistant", decision));
-                prompt.add(new Message("tool", toolResult));
-            }
+            prompt.addAll(agentFuture.get());
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
         if (search) {
             // 联网搜索
-            String searchDecision = chatOnce(modelName, provider, List.of(
+            String searchDecision = agentService.chatOnce(modelName, provider, List.of(
                     new Message("system", promptBuilder.buildSearchPrompt()),
                     userMessage
             ));
@@ -246,17 +230,5 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
         return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
     }
 
-    private String chatOnce(String modelName, Provider provider, List<Message> messages) {
-        ModelAdapter modelAdapter = adapterMap.get(provider);
-        Object request = modelAdapter.buildRequest(modelName, messages, false, false);
-        Class<? extends NonStreamResponse> clazz = modelAdapter.getNonStreamResponseClass();
-        NonStreamResponse response = modelAdapter
-                .buildWebClient().post()
-                .uri(modelAdapter.getUri(modelName))
-                .bodyValue(request)
-                .retrieve()
-                .bodyToMono(clazz)
-                .block();
-        return response.getContent();
-    }
+
 }

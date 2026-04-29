@@ -67,31 +67,15 @@ public class PromptBuilder {
         return s != null && !s.isEmpty();
     }
 
-    public String buildToolPrompt(String ip) {
-        List<ToolDefinition> tds = new ArrayList<>();
-        tds.add(new ToolDefinition(
-                "getWeather",
-                "查询某个城市的天气",
-                """
-                        {
-                            "city": "城市名称"
-                        }
-                        """
-        ));
-        return """
-                你可以使用工具来回答问题。
-                
-                可用工具:
-                
-                工具名: getWeather
-                描述: 查询某个城市的天气
-                参数:
-                {
-                    "city": "城市名称", /* 如北京、深圳，如果用户没说具体位置就填“当地” */
-                    "version" "v63", /* v63为当日天气，v9为七天天气 */
-                    "ip": "%s" /* city参数为“当地”时才添加ip参数，参数值就用这里的值 */
-                }
-                
+    public String buildToolPrompt(List<ToolDefinition> tds, String ip) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("你可以使用工具来获取结果。\n\n可用工具:\n\n");
+        for (ToolDefinition td : tds) {
+            sb.append("工具名: ").append(td.getName());
+            sb.append("描述: ").append(td.getDescription());
+            sb.append("参数: \n").append(td.getParameters()).append("\n\n");
+        }
+        sb.append("""
                 当需要调用工具时，必须严格输出以下JSON格式:
                 
                 {
@@ -103,8 +87,11 @@ public class PromptBuilder {
                 
                 不要输出任何其他内容。
                 
-                不需要调用工具时，输出: {}
-                """.formatted(ip);
+                当前用户的ip地址为: “%s”
+                
+                之前的调用已经有结果且不再需要调用工具时，不要回复用户消息，直接输出: {}。
+                """.formatted(ip));
+        return sb.toString();
     }
 
     public String buildSearchPrompt() {
