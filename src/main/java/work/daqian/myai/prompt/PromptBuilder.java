@@ -85,6 +85,12 @@ public class PromptBuilder {
                     }
                 }
                 
+                不需要参数的工具输出以下JSON格式:
+                
+                {
+                    "tool": "toolName"
+                }
+                
                 不要输出任何其他内容。
                 
                 当前用户的ip地址为: “%s”

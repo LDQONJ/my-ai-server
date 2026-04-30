@@ -78,6 +78,13 @@ public class WebSearchTool implements Tool,InitializingBean {
         );
     }
 
+    @Override
+    public String doTool(String wsId, Map<String, Object> arguments) {
+        String query = (String) arguments.get("query");
+        webSocketService.sendMessageToClient(wsId, "正在联网搜索: “" + query + "”...");
+        return webSearch(wsId, query);
+    }
+
     @Data
     static class SearchResult {
         private String url;

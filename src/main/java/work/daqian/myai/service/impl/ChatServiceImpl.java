@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.MediaType;
 import org.springframework.lang.Nullable;
@@ -64,6 +65,8 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
     @Autowired
     @Qualifier("taskExecutor")
     private Executor taskExecutor;
+    @Value("${AGENT_MODEL}")
+    private String agentModel;
 
     private final List<ModelAdapter> adapters;
     private Map<Provider, ModelAdapter> adapterMap;
@@ -80,10 +83,11 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
         // 提前异步调用工具链，减少阻塞时间
         String currentIp = IpUtils.getCurrentIp();
         String wsId = chatForm.getWsId();
-        CompletableFuture<List<Message>> agentFuture = CompletableFuture.supplyAsync(() -> agentService.runAgent(wsId, text, currentIp), taskExecutor);
+        String sessionId = chatForm.getSessionId();
+        List<Message> history = contextService.getHistory(sessionId, false);
+        CompletableFuture<List<Message>> agentFuture = CompletableFuture.supplyAsync(() -> agentService.runAgent(wsId, history, text, currentIp), taskExecutor);
 
         Long userId = SecurityUtils.getCurrentUserId();
-        String sessionId = chatForm.getSessionId();
         Boolean think = chatForm.getThink();
         Boolean enablePrompt = chatForm.getPrompt();
         Long modelId = chatForm.getModelId();
@@ -117,7 +121,6 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
 
         // 构建 prompt
         Message userMessage = new Message("user", text);
-        List<Message> history = contextService.getHistory(sessionId, false);
         // log.info("当前会话 {} 历史上下文：{}", sessionId, history);
         PromptContext promptContext;
         if (enablePrompt) {
@@ -138,20 +141,23 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
         }
         List<Message> prompt = promptBuilder.build(promptContext);
         List<Message> agentToolTemp = new ArrayList<>(10);
+        List<Message> agentResult;
         // 拼接工具调用结果
         try {
-            List<Message> agentResult = agentFuture.get();
+            agentResult = agentFuture.get();
             prompt.addAll(agentResult);
             agentToolTemp.addAll(agentResult);
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
+        List<Message> searchContext = new ArrayList<>(32);
+        searchContext.add(new Message("system", promptBuilder.buildSearchPrompt(webSearchTool.getToolDefinition())));
+        searchContext.addAll(history);
+        searchContext.add(userMessage);
+        searchContext.addAll(agentResult);
         if (search) {
             // 联网搜索
-            String searchDecision = agentService.getDecision("qwen3.6-flash", Provider.ALIBABA, List.of(
-                    new Message("system", promptBuilder.buildSearchPrompt(webSearchTool.getToolDefinition())),
-                    userMessage
-            ));
+            String searchDecision = agentService.getDecision(agentModel, Provider.ALIBABA, searchContext);
             String searchResult = getToolResult(searchDecision, wsId);
             if (!StringUtils.isEmpty(searchResult)) {
                 prompt.add(new Message("system", """

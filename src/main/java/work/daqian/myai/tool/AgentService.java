@@ -3,6 +3,7 @@ package work.daqian.myai.tool;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import work.daqian.myai.adapter.ModelAdapter;
 import work.daqian.myai.adapter.NonStreamResponse;
@@ -37,6 +38,9 @@ public class AgentService implements InitializingBean {
 
     private final PromptBuilder promptBuilder;
 
+    @Value("${AGENT_MODEL}")
+    private String agentModel;
+
     @Override
     public void afterPropertiesSet() {
         adapterMap = adapters.stream()
@@ -46,7 +50,7 @@ public class AgentService implements InitializingBean {
 
     private static final int MAX_STEPS = 5;
 
-    public List<Message> runAgent(String wsId, String userInput, String ip) {
+    public List<Message> runAgent(String wsId, List<Message> history, String text, String ip) {
 
         List<Message> messages = new ArrayList<>();
 
@@ -55,19 +59,22 @@ public class AgentService implements InitializingBean {
         messages.add(new Message("system", """
                 你是一个工具调用者，根据用户的输入判断是否需要调用工具。调用规则:
                 
-                1. 只在你认为必须调用工具时才调用，不需要调用工具时不要回复用户，直接输出{}即可。
-                2. 如果当前问题已经可以回答，请不要再调用任何工具
+                1. 每次准备调用工具前，必须先扫描最近的对话历史，检查是否存在该工具的调用记录
+                2. 如果对话历史中有同样的工具调用和同样的参数，禁止重复调用该工具
                 3. 不要为了“补充信息”而额外调用工具
                 4. 工具调用应最小化（能少就少）
+                5. 一旦决定调用工具，必须输出工具调用指令；一旦决定不调用，必须输出{}。
+                6. 绝对禁止在调用工具后直接输出对用户说话的文本。
                 """));
         messages.add(new Message("system", promptBuilder.buildToolPrompt(TDS, ip)));
-        messages.add(new Message("user", userInput));
+        messages.addAll(history);
+        messages.add(new Message("user", text));
 
         // Agent Loop
         for (int i = 0; i < MAX_STEPS; i++) {
 
             // 模型决策（非流式）
-            String decision = getDecision("qwen3.6-flash", Provider.ALIBABA, messages);
+            String decision = getDecision(agentModel, Provider.ALIBABA, messages);
 
             if (decision == null || decision.equals("{}")) break;
 

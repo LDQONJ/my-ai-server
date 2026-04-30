@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -42,7 +43,8 @@ public class ContextServiceImpl implements ContextService {
 
     private final ObjectMapper mapper;
 
-    private static final int MAX_CONTEXT = 20;
+    @Value("${MAX_HISTORY_LENGTH}")
+    private int MAX_CONTEXT;
 
     private final ChatMessageService messageService;
 

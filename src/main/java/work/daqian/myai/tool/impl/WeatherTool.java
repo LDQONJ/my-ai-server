@@ -13,15 +13,18 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import work.daqian.myai.tool.Tool;
 import work.daqian.myai.tool.ToolDefinition;
+import work.daqian.myai.websocket.WebSocketService;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class WeatherTool implements Tool,InitializingBean {
 
+    private final WebSocketService webSocketService;
     private WebClient webClient;
 
     @Value("${api.key.weather.id}")
@@ -82,6 +85,12 @@ public class WeatherTool implements Tool,InitializingBean {
                         }
                         """
         );
+    }
+
+    @Override
+    public String doTool(String wsId, Map<String, Object> arguments) {
+        webSocketService.sendMessageToClient(wsId, "正在获取天气信息...");
+        return getWeather((String) arguments.get("city"), (String) arguments.get("version"));
     }
 
     @Data
