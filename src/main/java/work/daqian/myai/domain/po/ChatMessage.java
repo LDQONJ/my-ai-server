@@ -22,6 +22,8 @@ public class ChatMessage {
 
     private String content;
 
+    private String audio;
+
     private String thinking;
 
     private String modelName;

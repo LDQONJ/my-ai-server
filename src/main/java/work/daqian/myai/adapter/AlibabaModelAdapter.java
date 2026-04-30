@@ -74,6 +74,7 @@ public class AlibabaModelAdapter implements ModelAdapter {
             List<String> result = new ArrayList<>();
             String[] lines = chunk.split("\n");
 
+            if (contentBuilder == null) contentBuilder = new StringBuilder();
             synchronized (contentBuilder) {
                 for (String line : lines) {
                     line = line.trim();
@@ -103,7 +104,8 @@ public class AlibabaModelAdapter implements ModelAdapter {
                         if (promptTokensDetails != null)
                             cachedTokens = promptTokensDetails.path("cached_tokens").asInt();
                         String modelName = node.path("model").asText();
-                        saveUsageDetail(userId, sessionId, modelName, promptTokens, completionTokens, totalTokens, reasoningTokens, cachedTokens);
+                        if (userId != null)
+                            saveUsageDetail(userId, sessionId, modelName, promptTokens, completionTokens, totalTokens, reasoningTokens, cachedTokens);
                         continue;
                     }
 

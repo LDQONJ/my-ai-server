@@ -10,6 +10,8 @@ public class ChatFormDTO {
     private String sessionId;
     @Schema(description = "聊天内容", example = "你好")
     private String text;
+    @Schema(description = "关联的语音文件", example = "/files/audio.mp3")
+    private String audio;
     @Schema(description = "是否开启深度思考", example = "false")
     private Boolean think;
     @Schema(description = "是否开启提示词功能", example = "true")

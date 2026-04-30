@@ -12,6 +12,8 @@ public class ChatMessageVO {
     private String thinking;
     @Schema(description = "消息内容", example = "你好")
     private String content;
+    @Schema(description = "语音文件", example = "/files/audio.mp3")
+    private String audio;
     @Schema(description = "用户名或模型名称", example = "ldq or DeepSeek")
     private String name;
 }
