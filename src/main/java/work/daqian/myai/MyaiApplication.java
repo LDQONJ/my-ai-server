@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication
+@SpringBootApplication(exclude = org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration.class)
 @MapperScan("work.daqian.myai.mapper")
 @EnableMongoAuditing
 @EnableScheduling

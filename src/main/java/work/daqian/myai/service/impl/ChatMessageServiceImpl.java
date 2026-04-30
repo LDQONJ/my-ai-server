@@ -4,6 +4,8 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import work.daqian.myai.domain.dto.Message;
 import work.daqian.myai.domain.po.ChatMessage;
 import work.daqian.myai.domain.po.Model;
 import work.daqian.myai.domain.vo.ChatMessageVO;
@@ -26,21 +28,22 @@ public class ChatMessageServiceImpl implements ChatMessageService {
 
 
     @Override
-    public void saveUserMessage(String sessionId, Long userId, String content) {
+    public void saveUserMessage(String sessionId, Long userId, String content, String audio) {
         ChatMessage chatMessage = new ChatMessage();
         chatMessage.setUserId(userId);
         chatMessage.setSessionId(sessionId);
         chatMessage.setContent(content);
         chatMessage.setRole("user");
+        chatMessage.setAudio(audio);
         messageRepository.save(chatMessage);
     }
 
     @Override
     public void saveAssistantMessage(String sessionId,
-                                        Long userId,
-                                        String modelName,
-                                        String content,
-                                        String thinking) {
+                                     Long userId,
+                                     String modelName,
+                                     String content,
+                                     String thinking) {
         ChatMessage chatMessage = new ChatMessage();
         chatMessage.setUserId(userId);
         chatMessage.setSessionId(sessionId);
@@ -49,6 +52,24 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         chatMessage.setThinking(thinking);
         chatMessage.setRole("assistant");
         messageRepository.save(chatMessage);
+    }
+
+    @Override
+    @Transactional
+    public void saveAgentToolMessage(String sessionId, Long userId, String modelName, List<Message> agentToolTemp) {
+        for (Message message : agentToolTemp) {
+            String role = message.getRole();
+            if (role.equals("assistant")) {
+                saveAssistantMessage(sessionId, userId, modelName, message.getContent(), null);
+            } else {
+                ChatMessage chatMessage = new ChatMessage();
+                chatMessage.setUserId(userId);
+                chatMessage.setSessionId(sessionId);
+                chatMessage.setContent(message.getContent());
+                chatMessage.setRole(role);
+                messageRepository.save(chatMessage);
+            }
+        }
     }
 
     @Override
@@ -72,9 +93,13 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         List<ChatMessageVO> vos = new ArrayList<>(messages.size());
         String username = SecurityUtils.getCurrentUsername();
         for (ChatMessage message : messages) {
+            String role = message.getRole();
+            if ((role.equals("assistant") && message.getContent().startsWith("{"))
+                    || role.equals("tool"))
+                continue;
             ChatMessageVO vo = BeanUtils.copyBean(message, ChatMessageVO.class);
             String modelName = message.getModelName();
-            if (message.getRole().equals("user")) {
+            if (role.equals("user")) {
                 vo.setName(username != null ? username : "匿名用户");
             } else if (modelName == null || modelName.isEmpty()) {
                 vo.setName("DeepSeek");

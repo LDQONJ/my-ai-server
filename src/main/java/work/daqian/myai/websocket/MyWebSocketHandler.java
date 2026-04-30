@@ -19,7 +19,7 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         // 连接成功时，保存 wsId 和 WebSocket 会话
         webSocketService.addSession(session);
-        System.out.println("新的ws连接已建立，wsId: " + session.getId());
+        //System.out.println("新的ws连接已建立，wsId: " + session.getId());
 
         // 将 wsId 传递给客户端
         String wsId = session.getId();
@@ -40,6 +40,6 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         // 客户端断开时移除会话
         webSocketService.removeSession(session);
-        System.out.println("ws连接断开，wsId: " + session.getId());
+        //System.out.println("ws连接断开，wsId: " + session.getId());
     }
 }

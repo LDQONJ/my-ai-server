@@ -190,10 +190,13 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                 .filter(content -> content != null && !content.isEmpty())
                 .concatWith(Flux.defer(() -> {
                     String title = contentBuilder.toString();
-                    CompletableFuture.runAsync(() -> lambdaUpdate()
-                            .eq(ChatSession::getId, id)
-                            .set(ChatSession::getTitle, title)
-                            .update(), taskExecutor);
+                    CompletableFuture.runAsync(() -> {
+                        lambdaUpdate()
+                                .eq(ChatSession::getId, id)
+                                .set(ChatSession::getTitle, title)
+                                .update();
+                        redisTemplate.delete("session:list:uid:" + SecurityUtils.getCurrentUserId());
+                    }, taskExecutor);
                     return Flux.just(toSSEDone());
                 }));
     }

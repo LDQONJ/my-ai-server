@@ -37,7 +37,7 @@ public class ToolExecutor {
             case "webSearch" -> {
                 String query = (String) call.getArguments().get("query");
                 webSocketService.sendMessageToClient(wsId, "正在联网搜索: “" + query + "”...");
-                yield webSearchTool.webSearch(query);
+                yield webSearchTool.webSearch(wsId, query);
             }
             default -> "未知工具";
         };

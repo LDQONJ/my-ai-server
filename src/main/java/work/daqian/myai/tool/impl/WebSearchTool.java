@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import work.daqian.myai.tool.Tool;
 import work.daqian.myai.tool.ToolDefinition;
+import work.daqian.myai.websocket.WebSocketService;
 
 import java.util.Map;
 
@@ -23,10 +24,12 @@ public class WebSearchTool implements Tool,InitializingBean {
 
     private final ObjectMapper mapper;
 
+    private final WebSocketService webSocketService;
+
     @Value("${api.key.search}")
     private String apiKey;
 
-    public String webSearch(String query) {
+    public String webSearch(String wsId, String query) {
         Map<String, String> request = Map.of(
                 "query", query
         );
@@ -41,6 +44,7 @@ public class WebSearchTool implements Tool,InitializingBean {
             JsonNode node = mapper.readTree(json);
             JsonNode results = node.path("results");
             SearchResult[] searchResults = mapper.convertValue(results, SearchResult[].class);
+            webSocketService.sendMessageToClient(wsId, "已查询到 " + searchResults.length + " 条结果");
             for (SearchResult searchResult : searchResults) {
                 // 5 条结果每条结果内容最多留 200 字，否则可能一次消耗数万 token
                 String content = searchResult.getContent();
@@ -65,7 +69,7 @@ public class WebSearchTool implements Tool,InitializingBean {
     public ToolDefinition getToolDefinition() {
         return new ToolDefinition(
                 "webSearch",
-                "搜索互联网获取最新信息",
+                "从互联网上搜索最新资料",
                 """
                         {
                             "query": "要搜索的内容"
@@ -76,6 +80,7 @@ public class WebSearchTool implements Tool,InitializingBean {
 
     @Data
     static class SearchResult {
+        private String url;
         private String title;
         private String content;
         private Double score;

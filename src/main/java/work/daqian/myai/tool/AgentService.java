@@ -67,7 +67,7 @@ public class AgentService implements InitializingBean {
         for (int i = 0; i < MAX_STEPS; i++) {
 
             // 模型决策（非流式）
-            String decision = chatOnce("qwen3.6-flash", Provider.ALIBABA, messages);
+            String decision = getDecision("qwen3.6-flash", Provider.ALIBABA, messages);
 
             if (decision == null || decision.equals("{}")) break;
 
@@ -86,17 +86,16 @@ public class AgentService implements InitializingBean {
 
             // log.info("本次 Agent 循环结果: {}", result);
         }
-        if (result.isEmpty()) {
-            webSocketService.sendMessageToClient(wsId, "未调用工具");
-        } else {
+        if (!result.isEmpty()) {
             webSocketService.sendMessageToClient(wsId, "已调用 " + (result.size() >> 1) + " 个工具");
         }
         return result;
     }
 
-    public String chatOnce(String modelName, Provider provider, List<Message> messages) {
+    public String getDecision(String modelName, Provider provider, List<Message> messages) {
         ModelAdapter modelAdapter = adapterMap.get(provider);
         Object request = modelAdapter.buildRequest(modelName, messages, false, false);
+        // ChatUtil.debugRequestBody(request);
         Class<? extends NonStreamResponse> clazz = modelAdapter.getNonStreamResponseClass();
         NonStreamResponse response = modelAdapter
                 .buildWebClient().post()

@@ -42,6 +42,7 @@ public class WebSocketService {
 
     // 向特定客户端发送消息
     public void sendMessageToClient(String sessionId, String message) {
+        if (sessionId == null) return;
         WebSocketSession session = sessions.get(sessionId);
         if (session != null && session.isOpen()) {
             try {
