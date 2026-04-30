@@ -11,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 import work.daqian.myai.adapter.ModelAdapter;
 import work.daqian.myai.domain.dto.ChatFormDTO;
@@ -148,7 +150,14 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
             prompt.addAll(agentResult);
             agentToolTemp.addAll(agentResult);
         } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
+            Throwable cause = e.getCause();
+            if (cause instanceof WebClientRequestException) {
+                throw (WebClientRequestException) cause;
+            } else if (cause instanceof WebClientResponseException) {
+                throw (WebClientResponseException) cause;
+            } else {
+                throw new RuntimeException(e);
+            }
         }
         List<Message> searchContext = new ArrayList<>(32);
         searchContext.add(new Message("system", promptBuilder.buildSearchPrompt(webSearchTool.getToolDefinition())));
