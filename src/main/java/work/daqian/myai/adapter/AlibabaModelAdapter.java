@@ -13,6 +13,7 @@ import reactor.core.publisher.Flux;
 import reactor.netty.http.client.HttpClient;
 import work.daqian.myai.domain.dto.Message;
 import work.daqian.myai.enums.Provider;
+import work.daqian.myai.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,6 +44,7 @@ public class AlibabaModelAdapter implements ModelAdapter {
         HttpClient httpClient = HttpClient.newConnection();
         return builder.baseUrl("https://dashscope.aliyuncs.com")
                 .defaultHeader("Authorization", "Bearer " + apiKey)
+                .defaultHeader("X-DashScope-SSE", "enable")
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .build();
     }
@@ -50,6 +52,10 @@ public class AlibabaModelAdapter implements ModelAdapter {
     @Override
     public String getUri(String modelName) {
         return "/compatible-mode/v1/chat/completions";
+    }
+
+    public String getMultiUri() {
+        return "/api/v1/services/aigc/multimodal-generation/generation";
     }
 
     @Override
@@ -127,6 +133,39 @@ public class AlibabaModelAdapter implements ModelAdapter {
             return Flux.fromIterable(result);
         } catch (Exception e) {
             log.warn("解析阿里云 Api chunk 失败: {}", e.getMessage());
+            return Flux.empty();
+        }
+    }
+
+    public Flux<String> parseAudioChunk(String chunk, Long userId, String sessionId) {
+        try {
+            List<String> result = new ArrayList<>();
+            String[] lines = chunk.split("\n");
+
+            for (String line : lines) {
+                line = line.trim();
+
+                if (line.isEmpty() || line.startsWith("id") || line.startsWith("event") || line.startsWith(":")) continue;
+
+                // 提取 JSON
+                JsonNode node = mapper.readTree(line);
+
+                JsonNode output = node.path("output");
+
+                JsonNode audio = output.path("audio");
+
+                JsonNode data = audio.path("data");
+
+                String audioPart = data.asText(null);
+
+                if (!StringUtils.isEmpty(audioPart)) {
+                    result.add(toJson("streamTTS", audioPart));
+                }
+            }
+
+            return Flux.fromIterable(result);
+        } catch (Exception e) {
+            log.warn("解析阿里云 TTS Api chunk 失败: {}", e.getMessage());
             return Flux.empty();
         }
     }

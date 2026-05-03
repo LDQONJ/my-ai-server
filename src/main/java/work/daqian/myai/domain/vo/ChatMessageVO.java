@@ -6,6 +6,8 @@ import lombok.Data;
 @Data
 @Schema(description = "聊天消息视图对象")
 public class ChatMessageVO {
+    @Schema(description = "消息的 Id", example = "duh9yda8dha2")
+    private String id;
     @Schema(description = "角色 (user/assistant)", example = "user")
     private String role;
     @Schema(description = "思考内容", example = "思考内容")

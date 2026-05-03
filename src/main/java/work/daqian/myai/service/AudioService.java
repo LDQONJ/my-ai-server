@@ -4,4 +4,6 @@ import reactor.core.publisher.Flux;
 
 public interface AudioService {
     Flux<String> voiceToText(String fileName);
+
+    Flux<String> textToVoice(String id);
 }

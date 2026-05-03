@@ -23,4 +23,10 @@ public class AudioController {
     public Flux<String> voiceToText(@RequestBody String fileName) {
         return audioService.voiceToText(fileName);
     }
+
+    @PostMapping(value = "/streamTTS", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "流式文字转语音")
+    public Flux<String> textToVoice(@RequestBody String id) {
+        return audioService.textToVoice(id);
+    }
 }

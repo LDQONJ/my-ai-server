@@ -7,17 +7,17 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import work.daqian.myai.adapter.AlibabaModelAdapter;
+import work.daqian.myai.domain.po.ChatMessage;
+import work.daqian.myai.exception.BadRequestException;
 import work.daqian.myai.exception.BizIllegalException;
+import work.daqian.myai.repository.ChatMessageRepository;
 import work.daqian.myai.service.AudioService;
 import work.daqian.myai.service.FileService;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Base64;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static work.daqian.myai.util.ChatUtil.toSSEDone;
 
@@ -27,6 +27,8 @@ import static work.daqian.myai.util.ChatUtil.toSSEDone;
 public class AudioServiceImpl implements AudioService {
 
     private final AlibabaModelAdapter alibabaModelAdapter;
+
+    private final ChatMessageRepository messageRepository;
 
     private final FileService fileService;
 
@@ -64,6 +66,44 @@ public class AudioServiceImpl implements AudioService {
             throw new BizIllegalException("语音转文本失败");
         }
         return textStream;
+    }
+
+    @Override
+    public Flux<String> textToVoice(String id) {
+        Optional<ChatMessage> messageOptional = messageRepository.findById(id);
+        if (messageOptional.isEmpty()) throw new BadRequestException("消息不存在");
+        ChatMessage message = messageOptional.get();
+        return textToVoiceWithText(message.getContent());
+    }
+
+    public Flux<String> textToVoiceWithText(String text) {
+        /**
+         * {
+         *   "model": "qwen3-tts-flash",
+         *   "input": {
+         *     "text": "哈喽，我是李达千的AI助手，有什么事情需要我帮助吗？",
+         *     "voice": "Cherry",
+         *     "language_type": "Chinese"
+         *   }
+         * }
+         */
+        Map<String, Object> requestBody = Map.of(
+                "model", "qwen3-tts-flash",
+                "input", Map.of(
+                        "text", text,
+                        "voice", "Serena",
+                        "language_type", "Chinese"
+                )
+        );
+        return alibabaModelAdapter.buildWebClient().post()
+                .uri(alibabaModelAdapter.getMultiUri())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToFlux(String.class)
+                .flatMap(chunk -> alibabaModelAdapter.parseAudioChunk(chunk, null, null))
+                .filter(content -> content != null && !content.isEmpty())
+                .concatWith(Flux.just(toSSEDone()));
     }
 
 
