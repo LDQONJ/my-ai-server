@@ -34,7 +34,7 @@ public class FileServiceImpl implements FileService {
 
         String replaced = originName.replaceAll("-", "_");
         String originalName = replaced.substring(0, replaced.lastIndexOf("."));
-        String extension = replaced.substring(replaced.lastIndexOf(".")).toLowerCase();
+        String extension = replaced.substring(replaced.lastIndexOf(".") + 1).toLowerCase();
 
         // 日期路径
         String datePath = LocalDate.now().toString().replaceAll("-", "/");
@@ -55,7 +55,7 @@ public class FileServiceImpl implements FileService {
             // 判断是否音频
             if (isAudioFile(extension)) {
 
-                // 👉 转码后文件（统一用 wav）
+                // 转码后文件（统一用 wav）
                 String targetRelativePath = datePath + "/" +
                         originalName + "_" + UUID.randomUUID().toString().replaceAll("-", "") + ".wav";
 

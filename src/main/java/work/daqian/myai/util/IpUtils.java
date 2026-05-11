@@ -9,8 +9,7 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.reactive.function.client.WebClient;
-
-import java.util.Map;
+import work.daqian.myai.domain.dto.IpApiResponse;
 
 @Slf4j
 public class IpUtils {
@@ -65,7 +64,7 @@ public class IpUtils {
      * 根据 Ip 获取城市
      */
     public static String getCityFromIp(String ip) {
-        Map response = null;
+        IpApiResponse response = null;
         int retry = 0;
         while (response == null && retry < 3) {
             try {
@@ -76,16 +75,16 @@ public class IpUtils {
             }
         }
         if (response == null) return "北京";
-        return response.get("city").toString();
+        return response.toString();
     }
 
     @Nullable
-    private static Map doGetCity(String ip) {
-        Map response;
+    private static IpApiResponse doGetCity(String ip) {
+        IpApiResponse response;
         response = webClient.get()
                 .uri("/json/" + ip + "?lang=zh-CN")
                 .retrieve()
-                .bodyToMono(Map.class)
+                .bodyToMono(IpApiResponse.class)
                 .block();
         return response;
     }

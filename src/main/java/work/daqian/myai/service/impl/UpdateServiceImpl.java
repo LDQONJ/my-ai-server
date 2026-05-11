@@ -21,10 +21,12 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class UpdateServiceImpl implements UpdateService, InitializingBean {
+
     @Override
     public R<String> checkUpdate(Map<String, String> versionMap) {
         String versionName = versionMap.get("versionName");
-        if (versionName != null && !versionName.equals(latestVersionName))
+        if (versionName != null && latestVersionName != null
+        && !latestVersionName.equals(versionName))
             return R.ok("yes");
         try {
             latestVersionName = getLatestVersionName();
@@ -39,9 +41,17 @@ public class UpdateServiceImpl implements UpdateService, InitializingBean {
     public ResponseEntity<Resource> download() {
         String apk = apkDir + apkName;
         File apkFile = new File(apk);
+        if (!apkFile.exists()) {
+            try {
+                getLatestVersionName();
+            } catch (Exception e) {
+                return null;
+            }
+            apkFile = new File(apkDir + apkName);
+        }
         FileSystemResource resource = new FileSystemResource(apkFile);
         return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentType(MediaType.valueOf("application/vnd.android.package-archive"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + apkFile.getName() + "\"")
                 .body(resource);
     }

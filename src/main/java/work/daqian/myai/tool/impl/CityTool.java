@@ -23,7 +23,7 @@ public class CityTool implements Tool {
     public ToolDefinition getToolDefinition() {
         return new ToolDefinition(
                 "getCity",
-                "根据 IP 获取城市名称",
+                "根据 IP 获取用户所在地",
                 """
                         {
                             "ip": "ip地址" /* ipv4或者ipv6地址值，无需特殊处理 */
