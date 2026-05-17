@@ -143,7 +143,7 @@ public class CommonExceptionAdvice {
     @ExceptionHandler(CommonException.class)
     public Object handleBadRequestException(CommonException e) {
         log.error("自定义异常 -> {} , 状态码：{}, 异常原因：{}  ", e.getClass().getName(), e.getStatus(), e.getMessage());
-        log.debug("", e);
+        // log.debug("", e);
         return processResponse(e.getStatus(), e.getCode(), e.getMessage());
     }
 

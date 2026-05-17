@@ -28,14 +28,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String token = request.getHeader("Authorization");
         if (token != null) {
-            LoginUserDTO loginUserDTO = jwtUtil.parseToken(token);
-            SecurityUserDetails userDetails = BeanUtils.copyBean(loginUserDTO, SecurityUserDetails.class);
-            List<SimpleGrantedAuthority> authorities = loginUserDTO.getRoles()
-                    .stream().map(SimpleGrantedAuthority::new).toList();
-            userDetails.setAuthorities(authorities);
-            UsernamePasswordAuthenticationToken authenticationToken =
-                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-            SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+            try {
+                LoginUserDTO loginUserDTO = jwtUtil.parseToken(token);
+                SecurityUserDetails userDetails = BeanUtils.copyBean(loginUserDTO, SecurityUserDetails.class);
+                List<SimpleGrantedAuthority> authorities = loginUserDTO.getRoles()
+                        .stream().map(SimpleGrantedAuthority::new).toList();
+                userDetails.setAuthorities(authorities);
+                UsernamePasswordAuthenticationToken authenticationToken =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+            } catch (Exception e) {
+                response.setStatus(HttpServletResponse.SC_OK);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("""
+                        {
+                            "code": 401,
+                            "msg": "%s"
+                        }
+                        """.formatted(e.getMessage()));
+                return;
+            }
         }
         filterChain.doFilter(request, response);
     }

@@ -11,10 +11,12 @@ import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.authentication.AccountExpiredException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Component;
 import work.daqian.myai.constant.JwtConstants;
 import work.daqian.myai.domain.dto.LoginUserDTO;
-import work.daqian.myai.exception.BadRequestException;
+import work.daqian.myai.exception.BizIllegalException;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -93,25 +95,25 @@ public class JwtUtil {
         try {
             jwt = JWT.of(refreshToken).setSigner(getSigner());
         } catch (Exception e) {
-            throw new BadRequestException(400, "token 错误", e);
+            throw new BizIllegalException("jwt 初始化异常");
         }
         // 2.校验jwt是否有效
         if (!jwt.verify()) {
             // 验证失败
-            throw new BadRequestException(400, "token 错误");
+            throw new BadCredentialsException("token 错误");
         }
         // 3.校验是否过期
         try {
             JWTValidator.of(jwt).validateDate();
         } catch (ValidateException e) {
-            throw new BadRequestException(400, "token 过期");
+            throw new AccountExpiredException("请重新登录");
         }
         // 4.数据格式校验
         Object userPayload = jwt.getPayload(PAYLOAD_USER_KEY);
         Object jtiPayload = jwt.getPayload(JwtConstants.PAYLOAD_JTI_KEY);
         if (jtiPayload == null || userPayload == null) {
             // 数据为空
-            throw new BadRequestException(400, "token 错误");
+            throw new BadCredentialsException("token 错误");
         }
 
         // 5.数据解析
@@ -120,14 +122,14 @@ public class JwtUtil {
             userDTO = ((JSONObject) userPayload).toBean(LoginUserDTO.class);
         } catch (RuntimeException e) {
             // 数据格式有误
-            throw new BadRequestException(400, "token 错误");
+            throw new BadCredentialsException("token 错误");
         }
 
         // 6.JTI校验
         String jti = stringRedisTemplate.opsForValue().get(JwtConstants.JWT_REDIS_KEY_PREFIX + userDTO.getId());
         if (!StringUtils.equals(jti, jtiPayload.toString())) {
             // jti不一致
-            throw new BadRequestException(400, "token 错误");
+            throw new BadCredentialsException("token 错误");
         }
         return userDTO;
     }
@@ -153,30 +155,30 @@ public class JwtUtil {
             jwt = JWT.of(token).setSigner(getSigner());
         } catch (Exception e) {
             log.info("创建 jwt 对象失败，token：{}", token);
-            throw new BadRequestException(400, "token 错误");
+            throw new BizIllegalException("jwt 初始化异常");
         }
         // 4.校验jwt是否有效
         try {
             if (!jwt.verify()) {
                 // 验证失败
                 log.info("jwt 解析失败，token：{}", token);
-                throw new BadRequestException(400, "token 错误");
+                throw new BadCredentialsException("token 错误");
             }
         } catch (Exception e) {
             log.info("jwt 验证失败，token：{}", token, e);
-            throw new BadRequestException(400, "token 错误");
+            throw new BadCredentialsException("token 错误");
         }
         // 5.校验是否过期
         try {
             JWTValidator.of(jwt).validateDate();
         } catch (ValidateException e) {
-            throw new BadRequestException(400, "token 错误");
+            throw new AccountExpiredException("登录失效，请重新登录");
         }
         // 6.数据格式校验
         Object userPayload = jwt.getPayload(JwtConstants.PAYLOAD_USER_KEY);
         if (userPayload == null) {
             // 数据为空
-            throw new BadRequestException(400, "token 错误");
+            throw new BadCredentialsException("token 错误");
         }
         // 7.数据解析
         LoginUserDTO userDTO;
@@ -184,9 +186,8 @@ public class JwtUtil {
             userDTO = ((JSONObject) userPayload).toBean(LoginUserDTO.class);
         } catch (RuntimeException e) {
             // 数据格式有误
-            throw new BadRequestException(400, "token 错误");
+            throw new BadCredentialsException("token 错误");
         }
-
         return userDTO;
     }
 
