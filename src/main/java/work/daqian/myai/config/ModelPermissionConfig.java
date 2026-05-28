@@ -10,7 +10,8 @@ import java.util.Set;
 public class ModelPermissionConfig {
 
     private static final Map<String, Set<Provider>> ROLE_MODEL_PERMISSION = Map.of(
-            "ROLE_USER", Set.of(Provider.OLLAMA),
+            //"ROLE_USER", Set.of(Provider.OLLAMA),
+            "ROLE_USER", Set.of(Provider.OLLAMA, Provider.ALIBABA, Provider.GOOGLE),
             "ROLE_ADMIN", Set.of(Provider.OLLAMA, Provider.ALIBABA, Provider.RESTRICT, Provider.GOOGLE)
     );
 

@@ -1,4 +1,4 @@
-package work.daqian.myai.filter;
+package work.daqian.myai.security.filter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

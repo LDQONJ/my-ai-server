@@ -15,7 +15,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import work.daqian.myai.filter.JwtAuthenticationFilter;
+import work.daqian.myai.security.IpRateLimiterService;
+import work.daqian.myai.security.filter.IpRoleRateLimitFilter;
+import work.daqian.myai.security.filter.JwtAuthenticationFilter;
+
+import java.util.List;
+import java.util.Map;
 
 @Configuration
 @EnableWebSecurity
@@ -26,8 +31,29 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
+    public IpRateLimiterService ipRateLimiterService() {
+        return new IpRateLimiterService();
+    }
+
+    @Bean
+    public IpRoleRateLimitFilter ipRoleRateLimitFilter() {
+        // 角色 -> 每小时调用次数
+        Map<String, Integer> roleCapacity = Map.of(
+                "ROLE_ADMIN", 1000,
+                "ROLE_USER",  3,
+                "ANONYMOUS",  3    // 未登录用户
+        );
+        int defaultCapacity = 3;   // 其他未知角色
+
+        List<String> patterns = List.of("/chat");
+        return new IpRoleRateLimitFilter(ipRateLimiterService(), roleCapacity, defaultCapacity, patterns);
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.csrf(AbstractHttpConfigurer::disable)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(ipRoleRateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(authorizationManagerRequestMatcherRegistry -> authorizationManagerRequestMatcherRegistry
                         .requestMatchers("/verifyCode/**").permitAll()
                         .requestMatchers("/users/register").permitAll()
