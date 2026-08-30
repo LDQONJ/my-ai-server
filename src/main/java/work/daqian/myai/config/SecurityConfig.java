@@ -15,6 +15,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.firewall.HttpFirewall;
+import org.springframework.security.web.firewall.StrictHttpFirewall;
 import work.daqian.myai.security.IpRateLimiterService;
 import work.daqian.myai.security.filter.IpRoleRateLimitFilter;
 import work.daqian.myai.security.filter.JwtAuthenticationFilter;
@@ -98,4 +100,10 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    @Bean
+    public HttpFirewall allowLazyCookieFirewall() {
+        StrictHttpFirewall firewall = new StrictHttpFirewall();
+        firewall.setAllowedHeaderValues(value -> true);
+        return firewall;
+    }
 }

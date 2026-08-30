@@ -42,7 +42,7 @@ public class AlibabaModelAdapter implements ModelAdapter {
     @Override
     public WebClient buildWebClient() {
         HttpClient httpClient = HttpClient.newConnection();
-        return builder.baseUrl("https://dashscope.aliyuncs.com")
+        return builder.baseUrl("https://dashscope-intl.aliyuncs.com")
                 .defaultHeader("Authorization", "Bearer " + apiKey)
                 .defaultHeader("X-DashScope-SSE", "enable")
                 .clientConnector(new ReactorClientHttpConnector(httpClient))

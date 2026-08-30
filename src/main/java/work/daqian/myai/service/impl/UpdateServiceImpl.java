@@ -87,7 +87,7 @@ public class UpdateServiceImpl implements UpdateService, InitializingBean {
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        latestVersionName = getLatestVersionName();
+        // latestVersionName = getLatestVersionName();
     }
 }
 

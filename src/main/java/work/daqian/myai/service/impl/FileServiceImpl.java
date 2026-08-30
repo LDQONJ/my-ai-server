@@ -25,7 +25,7 @@ import java.util.UUID;
 @Service
 public class FileServiceImpl implements FileService {
 
-    private final static String BASE_DICTIONARY = "D:/my-ai-img/";
+    private final static String BASE_DICTIONARY = "C:\\Users\\ldq\\my-ai-img\\";
 
     @Override
     public R<String> uploadFile(MultipartFile file) {

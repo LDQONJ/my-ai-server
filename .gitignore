@@ -1,0 +1,28 @@
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+
+logs
+.mvn/**
+src/test
+
+# Secret configuration
+src/main/resources/application-secret.yaml
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.settings/
+.project/
+.classpath/
+src/main/resources/rebel.xml
+
+# OS files
+Thumbs.db
+.DS_Store
+*.p12
+

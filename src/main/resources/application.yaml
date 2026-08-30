@@ -1,7 +1,7 @@
 server:
   port: 5000
   ssl:
-    enabled: true
+    enabled: false
     key-store: classpath:keystore.p12
     key-store-password: ${SSL_KEY_STORE_PASSWORD}
     key-store-type: PKCS12
@@ -31,13 +31,14 @@ spring:
     mongodb:
       uri: ${MONGODB_URI}
   mail:
-    host: smtp.qq.com
+    host: mail.ldqmail.com
     port: 587
     username: ${MAIL_USERNAME}
     password: ${MAIL_PASSWORD}
     protocol: smtp
     properties:
       mail:
+        host: mail.ldqmail.com
         smtp:
           auth: true
           starttls:
@@ -56,8 +57,8 @@ mybatis-plus:
 logging:
   pattern:
     dateformat: HH:mm:ss.SSS
-    console: "%clr(%d{${LOG_DATEFORMAT_PATTERN}}){faint}-[${hostname}][%X{requestId:-sys}] %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n"
-    file: "%d{${LOG_DATEFORMAT_PATTERN}}-[${hostname}][%X{requestId:-sys}]-${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%15.15t] %-40.40logger{39} : %m%n"
+    console: "%clr(%d{${LOG_DATEFORMAT_PATTERN}, Asia/Singapore}){faint}-[${hostname}][%X{requestId:-sys}] %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n"
+    file: "%d{${LOG_DATEFORMAT_PATTERN}, Asia/Singapore}-[${hostname}][%X{requestId:-sys}]-${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%15.15t] %-40.40logger{39} : %m%n"
   file:
     path: "logs/${spring.application.name}"
 

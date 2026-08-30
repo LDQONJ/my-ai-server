@@ -22,7 +22,7 @@ import static work.daqian.myai.util.ChatUtil.toJson;
 @RequiredArgsConstructor
 public class OllamaModelAdapter implements ModelAdapter {
 
-    private static final String BASE_URL = "http://127.0.0.1:11434";
+    private static final String BASE_URL = "http://daqian.work:11434";
     private final ObjectMapper mapper = new ObjectMapper();
     private final WebClient.Builder builder;
 
