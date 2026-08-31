@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -79,6 +80,8 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
     @Autowired
     @Qualifier("taskExecutor")
     private Executor taskExecutor;
+    @Value("${AGENT_MODEL}")
+    private String agentModel;
 
     @Override
     public R<String> create() {
@@ -173,14 +176,14 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
                 .build();
         List<Message> prompt = promptBuilder.build(promptContext);
         Object request = alibabaModelAdapter.buildRequest(
-                "qwen3.6-flash",
+                agentModel,
                 prompt,
                 true,
                 false
         );
         StringBuilder contentBuilder = new StringBuilder();
         return alibabaModelAdapter.buildWebClient().post()
-                .uri(alibabaModelAdapter.getUri("qwen3.6-flash"))
+                .uri(alibabaModelAdapter.getUri(agentModel))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .retrieve()

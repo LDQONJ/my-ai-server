@@ -31,6 +31,9 @@ public class AlibabaModelAdapter implements ModelAdapter {
     private final ObjectMapper mapper = new ObjectMapper();
     private final WebClient.Builder builder;
 
+    @Value("${ALIBABA_API_BASE_URL}")
+    private String baseUrl;
+
     @Value("${api.key.alibaba}")
     private String apiKey;
 
@@ -42,7 +45,7 @@ public class AlibabaModelAdapter implements ModelAdapter {
     @Override
     public WebClient buildWebClient() {
         HttpClient httpClient = HttpClient.newConnection();
-        return builder.baseUrl("https://dashscope-intl.aliyuncs.com")
+        return builder.baseUrl(baseUrl)
                 .defaultHeader("Authorization", "Bearer " + apiKey)
                 .defaultHeader("X-DashScope-SSE", "enable")
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
@@ -66,7 +69,8 @@ public class AlibabaModelAdapter implements ModelAdapter {
         Map<String, Object> requestMap = new HashMap<>(10);
         requestMap.put("model", modelName);
         requestMap.put("messages", messages);
-        requestMap.put("reasoning_effort", "high");
+        if (think)
+            requestMap.put("reasoning_effort", "high");
         requestMap.put("stream", stream);
         if (stream)
             requestMap.put("stream_options", Map.of("include_usage", true));
@@ -145,7 +149,8 @@ public class AlibabaModelAdapter implements ModelAdapter {
             for (String line : lines) {
                 line = line.trim();
 
-                if (line.isEmpty() || line.startsWith("id") || line.startsWith("event") || line.startsWith(":")) continue;
+                if (line.isEmpty() || line.startsWith("id") || line.startsWith("event") || line.startsWith(":"))
+                    continue;
 
                 // 提取 JSON
                 JsonNode node = mapper.readTree(line);

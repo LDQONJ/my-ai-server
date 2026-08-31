@@ -227,7 +227,7 @@ public class ChatServiceImpl implements ChatService, InitializingBean {
                                                 promptTokens, completionTokens, totalTokens, reasoningTokens, 0);
                                     }
                                     messageService.saveUserMessage(sessionId, userId, text, audio);
-                                    messageService.saveAgentToolMessage(sessionId, userId, "qwen3.6-flash", agentToolTemp);
+                                    messageService.saveAgentToolMessage(sessionId, userId, agentModel, agentToolTemp);
                                     messageService.saveAssistantMessage(sessionId, userId, modelName, cont, thin);
                                     contextService.saveHistory(sessionId, history);
                                     ChatSession session = sessionMapper.selectById(sessionId);

@@ -1,16 +1,10 @@
 server:
   port: 5000
-  ssl:
-    enabled: false
-    key-store: classpath:keystore.p12
-    key-store-password: ${SSL_KEY_STORE_PASSWORD}
-    key-store-type: PKCS12
-    key-alias: ai.daqian.work
 spring:
   profiles:
     include: secret
   application:
-    name: myai
+    name: ldq-ai-server
   main:
     allow-circular-references: true
   datasource:
@@ -77,6 +71,11 @@ ldq:
 
 knife4j:
   enable: true
+
+MAX_HISTORY_LENGTH: 50
+AGENT_MODEL: "qwen3.7-flash"
+apk:
+  dir: ""
 
 
 api:
